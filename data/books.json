@@ -8,14 +8,14 @@
     "authors": ["Abraham Silberschatz"],
     "keywords": ["databases", "sql"],
     "available_slots": 15,
-    "summary": "The text is designed for a first course in databases at the junior/senior "\\n"
-    undergraduate level or the first year graduate level. It also contains "\\n"
-    additional material that can be used as supplements or as introductory "\\n"
-    material for an advanced course. Because the authors present "\\n"
-    concepts as intuitive descriptions, a familiarity with basic data "\\n"
-    structures, computer organization, and a high-level programming "\\n"
-    language are the only prerequisites. Important theoretical results are "\\n"
-    covered, but formal proofs are omitted. In place of proofs, figures and "\\n"
+    "summary": "The text is designed for a first course in databases at the junior/senior \n
+    undergraduate level or the first year graduate level. It also contains \n
+    additional material that can be used as supplements or as introductory \n
+    material for an advanced course. Because the authors present \n
+    concepts as intuitive descriptions, a familiarity with basic data \n
+    structures, computer organization, and a high-level programming \n
+    language are the only prerequisites. Important theoretical results are \n
+    covered, but formal proofs are omitted. In place of proofs, figures and \n
     examples are used to suggest why a result is true."
   },
   {
