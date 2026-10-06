@@ -6,15 +6,21 @@ async function libraryRequest(action, options = {}) {
   let contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
     if (response.status === 404) {
-      throw new Error("The login and catalogue service isn't available. Check that the Netlify deployment includes the library function.");
+      throw new Error(
+        "The login and catalogue service isn't available. Check that the Netlify deployment includes the library function.",
+      );
     }
-    throw new Error("The library service didn't respond properly. Please try again shortly.");
+    throw new Error(
+      "The library service didn't respond properly. Please try again shortly.",
+    );
   }
   let data;
   try {
     data = await response.json();
   } catch {
-    throw new Error("The library service sent an unreadable response. Please try again shortly.");
+    throw new Error(
+      "The library service sent an unreadable response. Please try again shortly.",
+    );
   }
   if (response.status === 401 && action !== "login") {
     let content = document.querySelector("#private-content");
@@ -22,12 +28,15 @@ async function libraryRequest(action, options = {}) {
     window.location.replace("index.html?expired=1");
     throw new Error("Please sign in again.");
   }
-  if (!response.ok) throw new Error(data.message || "Something went wrong. Please try again.");
+  if (!response.ok)
+    throw new Error(data.message || "Something went wrong. Please try again.");
   return data;
 }
 
 function showPageError(error) {
-  document.querySelector("#page-message").textContent = error.message || "Couldn't connect. Please try again.";
+  let message = document.querySelector("#page-message");
+  message.classList.add("error");
+  message.textContent = error.message || "Couldn't connect. Please try again.";
 }
 
 async function checkLogin() {
@@ -40,7 +49,11 @@ async function logout() {
   let button = document.querySelector("#logout-button");
   button.disabled = true;
   try {
-    await libraryRequest("logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    await libraryRequest("logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
     document.querySelector("#private-content").hidden = true;
     window.location.replace("index.html?logout=1");
   } catch (error) {
