@@ -8,15 +8,7 @@
     "authors": ["Abraham Silberschatz"],
     "keywords": ["databases", "sql"],
     "available_slots": 15,
-    "summary": "The text is designed for a first course in databases at the junior/senior 
-    undergraduate level or the first year graduate level. It also contains 
-    additional material that can be used as supplements or as introductory 
-    material for an advanced course. Because the authors present 
-    concepts as intuitive descriptions, a familiarity with basic data 
-    structures, computer organization, and a high-level programming 
-    language are the only prerequisites. Important theoretical results are 
-    covered, but formal proofs are omitted. In place of proofs, figures and 
-    examples are used to suggest why a result is true."
+    "summary": "The text is designed for a first course in databases at the junior/senior undergraduate level or the first year graduate level. It also contains additional material that can be used as supplements or as introductory material for an advanced course. Because the authors present concepts as intuitive descriptions, a familiarity with basic data structures, computer organization, and a high-level programming language are the only prerequisites. Important theoretical results are covered, but formal proofs are omitted. In place of proofs, figures and examples are used to suggest why a result is true."
   },
   {
     "literature_id": 2,
