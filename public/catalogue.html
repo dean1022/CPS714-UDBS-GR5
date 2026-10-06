@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -12,29 +12,99 @@
   <body>
     <nav class="navbar">
       <div class="container">
-        <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
-        <div class="nav-links"><a href="catalogue.html" class="active" aria-current="page">Catalogue</a><button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button></div>
+        <a class="navbar-brand" href="catalogue.html"
+          ><span class="logo">U</span> UDBS</a
+        >
+        <div class="nav-links">
+          <a href="catalogue.html" class="active" aria-current="page"
+            >Catalogue</a
+          ><button
+            class="btn btn-outline-dark btn-sm"
+            id="logout-button"
+            hidden
+          >
+            Log out
+          </button>
+        </div>
       </div>
     </nav>
-    <p class="container message" id="page-message" role="status" aria-live="polite">Opening the library...</p>
+    <p
+      class="container message"
+      id="page-message"
+      role="status"
+      aria-live="polite"
+    >
+      Opening the library...
+    </p>
     <main class="container content" id="private-content" hidden>
       <section class="catalogue-heading">
-        <div><p class="eyebrow">THE DIGITAL SHELF</p><h1>Find your next read.</h1><p>Explore the catalogue or look for something specific.</p></div>
-        <div class="account-box"><span class="small-note">SIGNED IN AS</span><strong id="user-name"></strong><span id="user-status"></span></div>
+        <div>
+          <p class="eyebrow">THE DIGITAL SHELF</p>
+          <h1>Find your next read.</h1>
+          <p>Explore the catalogue or look for something specific.</p>
+        </div>
+        <div class="account-box">
+          <span class="small-note">SIGNED IN AS</span
+          ><strong id="user-name"></strong><span id="user-status"></span>
+        </div>
       </section>
       <form id="search-form" class="search-box">
-        <div class="search-row"><div class="search-input"><label for="search" class="form-label">What are you looking for?</label><input class="form-control" id="search" type="search" placeholder="Title, author, category or keyword" maxlength="256" /></div><button type="submit" class="btn btn-dark">Search</button></div>
+        <div class="search-row">
+          <div class="search-input">
+            <label for="search" class="form-label"
+              >What are you looking for?</label
+            ><input
+              class="form-control"
+              id="search"
+              type="search"
+              placeholder="Title, author, category or keyword"
+              maxlength="256"
+            />
+          </div>
+          <button type="submit" class="btn btn-dark">Search</button>
+        </div>
         <div class="filter-row">
-          <div><label for="category" class="form-label">Category</label><select id="category" class="form-select"><option value="">All categories</option></select></div>
-          <div><label for="sort" class="form-label">Sort by</label><select id="sort" class="form-select"><option value="title">Title A to Z</option><option value="author">Author A to Z</option></select></div>
-          <button type="button" class="clear-button" id="clear-button">Clear filters</button>
+          <div>
+            <label for="category" class="form-label">Category</label
+            ><select id="category" class="form-select">
+              <option value="">All categories</option>
+            </select>
+          </div>
+          <div>
+            <label for="sort" class="form-label">Sort by</label
+            ><select id="sort" class="form-select">
+              <option value="title">Title A to Z</option>
+              <option value="author">Author A to Z</option>
+            </select>
+          </div>
+          <button type="button" class="clear-button" id="clear-button">
+            Clear filters
+          </button>
         </div>
       </form>
-      <div class="results-heading"><h2>On the shelf</h2><p id="result-count" role="status" aria-live="polite"></p></div>
+      <div class="results-heading">
+        <h2>On the shelf</h2>
+        <p id="result-count" role="status" aria-live="polite"></p>
+      </div>
       <div class="row g-4" id="book-list"></div>
-      <div id="empty-message" class="empty-box" hidden><h3>No matches this time.</h3><p>Try a different search or clear your filters.</p></div>
+      <div id="empty-message" class="empty-box" hidden>
+        <h3>No matches this time.</h3>
+        <p>Try a different search or clear your filters.</p>
+      </div>
     </main>
-    <footer><div class="container">UDBS <span>CPS714 &middot; Group 5</span></div></footer>
-    <noscript><p class="container">Please enable JavaScript to view the catalogue.</p></noscript>
+    <footer>
+      <div class="container">
+        UDBS
+        <span
+          >CPS714 &middot; Group 5 &middot; Dean Voss &middot; Kusal Amarathunge
+          &middot; Megan Vieira &copy; 2026</span
+        >
+      </div>
+    </footer>
+    <noscript
+      ><p class="container">
+        Please enable JavaScript to view the catalogue.
+      </p></noscript
+    >
   </body>
 </html>
