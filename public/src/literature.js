@@ -2,19 +2,25 @@ async function showLiterature() {
   try {
     await checkLogin();
     let params = new URLSearchParams(window.location.search);
-    let data = await libraryRequest("book&id=" + encodeURIComponent(params.get("id") || ""));
+    let data = await libraryRequest(
+      "book&id=" + encodeURIComponent(params.get("id") || ""),
+    );
     let book = data.book;
     document.title = book.title + " | UDBS";
     document.querySelector("#book-title").textContent = book.title;
     document.querySelector("#cover-title").textContent = book.title;
-    document.querySelector("#book-author").textContent = "By " + (book.authors.join(", ") || "Author not listed");
+    document.querySelector("#book-author").textContent =
+      "By " + (book.authors.join(", ") || "Author not listed");
     document.querySelector("#book-category").textContent = book.category;
     document.querySelector("#cover-category").textContent = book.category;
     document.querySelector("#book-subject").textContent = book.category;
-    document.querySelector("#book-year").textContent = book.publication_year || "Not listed";
-    document.querySelector("#book-keywords").textContent = book.keywords.join(", ") || "Not listed";
-    document.querySelector("#book-id").textContent = book.literature_id;
-    document.querySelector("#book-summary").textContent = book.summary || "There isn't a summary for this title in the catalogue yet.";
+    document.querySelector("#book-year").textContent =
+      book.publication_year || "Not listed";
+    document.querySelector("#book-keywords").textContent =
+      book.keywords.join(", ") || "Not listed";
+    document.querySelector("#book-summary").textContent =
+      book.summary ||
+      "There isn't a summary for this title in the catalogue yet.";
     let availability = document.querySelector("#availability");
     if (book.available_slots > 0) {
       availability.textContent = `Available · ${book.available_slots} of ${book.total_access_slots} access slots`;
@@ -23,7 +29,8 @@ async function showLiterature() {
       availability.classList.add("unavailable");
     }
     params.delete("id");
-    document.querySelector("#back-link").href = "catalogue.html?" + params.toString();
+    document.querySelector("#back-link").href =
+      "catalogue.html?" + params.toString();
     document.querySelector("#page-message").textContent = "";
     document.querySelector("#private-content").hidden = false;
   } catch (error) {
