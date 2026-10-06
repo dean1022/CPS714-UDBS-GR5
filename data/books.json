@@ -5,15 +5,18 @@
     "publication_year": 2019,
     "total_access_slots": 15,
     "category": "Computer Science",
-    "authors": [
-      "Abraham Silberschatz"
-    ],
-    "keywords": [
-      "databases",
-      "sql"
-    ],
+    "authors": ["Abraham Silberschatz"],
+    "keywords": ["databases", "sql"],
     "available_slots": 15,
-    "summary": ""
+    "summary": "The text is designed for a first course in databases at the junior/senior "\\n"
+    undergraduate level or the first year graduate level. It also contains "\\n"
+    additional material that can be used as supplements or as introductory "\\n"
+    material for an advanced course. Because the authors present "\\n"
+    concepts as intuitive descriptions, a familiarity with basic data "\\n"
+    structures, computer organization, and a high-level programming "\\n"
+    language are the only prerequisites. Important theoretical results are "\\n"
+    covered, but formal proofs are omitted. In place of proofs, figures and "\\n"
+    examples are used to suggest why a result is true."
   },
   {
     "literature_id": 2,
@@ -21,12 +24,8 @@
     "publication_year": 2022,
     "total_access_slots": 15,
     "category": "Computer Science",
-    "authors": [
-      "Thomas Cormen"
-    ],
-    "keywords": [
-      "algorithms"
-    ],
+    "authors": ["Thomas Cormen"],
+    "keywords": ["algorithms"],
     "available_slots": 15,
     "summary": ""
   },
@@ -36,12 +35,8 @@
     "publication_year": 2008,
     "total_access_slots": 15,
     "category": "Software Engineering",
-    "authors": [
-      "Robert Martin"
-    ],
-    "keywords": [
-      "programming"
-    ],
+    "authors": ["Robert Martin"],
+    "keywords": ["programming"],
     "available_slots": 15,
     "summary": ""
   },
@@ -51,13 +46,8 @@
     "publication_year": 1998,
     "total_access_slots": 15,
     "category": "Physics",
-    "authors": [
-      "Stephen Hawking"
-    ],
-    "keywords": [
-      "space",
-      "black holes"
-    ],
+    "authors": ["Stephen Hawking"],
+    "keywords": ["space", "black holes"],
     "available_slots": 15,
     "summary": ""
   },
@@ -67,13 +57,8 @@
     "publication_year": 2015,
     "total_access_slots": 15,
     "category": "History",
-    "authors": [
-      "Yuval Harari"
-    ],
-    "keywords": [
-      "humans",
-      "evolution"
-    ],
+    "authors": ["Yuval Harari"],
+    "keywords": ["humans", "evolution"],
     "available_slots": 15,
     "summary": ""
   }
