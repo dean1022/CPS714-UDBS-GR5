@@ -19,7 +19,10 @@
     "authors": ["Thomas Cormen"],
     "keywords": ["algorithms"],
     "available_slots": 15,
-    "summary": ""
+    "summary": [
+      "A comprehensive update of the leading algorithms text, with new material on matchings in bipartite graphs, online algorithms, machine learning, and other topics.",
+      "Some books on algorithms are rigorous but incomplete; others cover masses of material but lack rigor. Introduction to Algorithms uniquely combines rigor and comprehensiveness. It covers a broad range of algorithms in depth, yet makes their design and analysis accessible to all levels of readers, with self-contained chapters and algorithms in pseudocode. Since the publication of the first edition, Introduction to Algorithms has become the leading algorithms text in universities worldwide as well as the standard reference for professionals. This fourth edition has been updated throughout."
+    ]
   },
   {
     "literature_id": 3,
@@ -30,7 +33,12 @@
     "authors": ["Robert Martin"],
     "keywords": ["programming"],
     "available_slots": 15,
-    "summary": ""
+    "summary": [
+      "Even bad code can function. But if code isn’t clean, it can bring a development organization to its knees. Every year, countless hours and significant resources are lost because of poorly written code. But it doesn’t have to be that way.",
+      "Noted software expert Robert C. Martin presents a revolutionary paradigm with Clean Code: A Handbook of Agile Software Craftsmanship. Martin has teamed up with his colleagues from Object Mentor to distill their best agile practice of cleaning code “on the fly” into a book that will instill within you the values of a software craftsman and make you a better programmer—but only if you work at it.",
+      "What kind of work will you be doing? You’ll be reading code—lots of code. And you will be challenged to think about what’s right about that code, and what’s wrong with it. More importantly, you will be challenged to reassess your professional values and your commitment to your craft.",
+      "Clean Code is divided into three parts. The first describes the principles, patterns, and practices of writing clean code. The second part consists of several case studies of increasing complexity. Each case study is an exercise in cleaning up code—of transforming a code base that has some problems into one that is sound and efficient. The third part is the payoff: a single chapter containing a list of heuristics and “smells” gathered while creating the case studies. The result is a knowledge base that describes the way we think when we write, read, and clean code."
+    ]
   },
   {
     "literature_id": 4,
@@ -41,7 +49,10 @@
     "authors": ["Stephen Hawking"],
     "keywords": ["space", "black holes"],
     "available_slots": 15,
-    "summary": ""
+    "summary": [
+      "A landmark volume in science writing by one of the great minds of our time, Stephen Hawking’s book explores such profound questions as: How did the universe begin—and what made its start possible? Does time always flow forward? Is the universe unending—or are there boundaries? Are there other dimensions in space? What will happen when it all ends?",
+      "Told in language we all can understand, A Brief History of Time plunges into the exotic realms of black holes and quarks, of antimatter and “arrows of time,” of the big bang and a bigger God—where the possibilities are wondrous and unexpected. With exciting images and profound imagination, Stephen Hawking brings us closer to the ultimate secrets at the very heart of creation."
+    ]
   },
   {
     "literature_id": 5,
@@ -52,6 +63,10 @@
     "authors": ["Yuval Harari"],
     "keywords": ["humans", "evolution"],
     "available_slots": 15,
-    "summary": ""
+    "summary": [
+      "Volume one of the epic, beautifully illustrated graphic history of humankind, based on Yuval Noah Harari's internationally bestselling phenomenon",
+      "In a world deluged by irrelevant information, clarity is power. How can we see the big picture without getting caught up in an infinity of little details? One way is to step back, to look at the really big picture: the entire history of the human species. Sapiens: A Graphic History, The Birth of Humankind is the story of how an insignificant ape became the ruler of planet Earth, capable of splitting the atom, flying to the Moon, and manipulating the genetic code of life.",
+      "With Yuval Noah Harari as your guide, and accompanied by characters like Prehistoric Bill, Dr. Fiction, and Detective Lopez, you are invited to take a ride on the wild side of history. The graphic format offers readers a new intellectual and artistic exploration of the past. Human evolution is reimagined as a tacky reality TV show. The first encounter between Sapiens and Neanderthals is explored through the masterpieces of modern art. The extinction of the mammoths and saber-toothed tigers is retold as a "whodunit" movie. Sapiens: A Graphic History is a radical, and radically fun, retelling of the story of humankind, bursting with wit, humor, and colorful characters. If you want to know why we are all trapped inside the dreams of dead people — read this book."
+    ]
   }
 ]
