@@ -481,3 +481,7 @@ footer span {
 #page-message.error {
   color: red;
 }
+
+#book-summary {
+  white-space: pre-line;
+}
