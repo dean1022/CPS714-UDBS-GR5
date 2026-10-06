@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Literature information | UDBS</title>
+    <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+    <link rel="stylesheet" href="src/styles.css" />
+    <script src="src/common.js" defer></script>
+    <script src="src/literature.js" defer></script>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
+        <div class="nav-links"><a href="catalogue.html">Catalogue</a><button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button></div>
+      </div>
+    </nav>
+    <p class="container message" id="page-message" role="status" aria-live="polite">Opening this title...</p>
+    <main class="container content" id="private-content" hidden>
+      <a href="catalogue.html" id="back-link" class="back-link">&larr; Back to catalogue</a>
+      <div class="row g-5 detail-layout">
+        <div class="col-md-4"><div class="detail-cover" aria-hidden="true"><span>UDBS / DIGITAL LITERATURE</span><strong id="cover-title"></strong><span id="cover-category"></span></div></div>
+        <article class="col-md-8">
+          <p class="eyebrow" id="book-category"></p>
+          <h1 id="book-title"></h1>
+          <p class="book-author" id="book-author"></p>
+          <p id="availability" class="availability"></p>
+          <h2 class="details-subheading">About this title</h2>
+          <p id="book-summary"></p>
+          <dl class="book-facts">
+            <div><dt>Published</dt><dd id="book-year"></dd></div>
+            <div><dt>Category</dt><dd id="book-subject"></dd></div>
+            <div><dt>Keywords</dt><dd id="book-keywords"></dd></div>
+            <div><dt>Catalogue ID</dt><dd id="book-id"></dd></div>
+          </dl>
+        </article>
+      </div>
+    </main>
+    <footer><div class="container">UDBS <span>CPS714 &middot; Group 5</span></div></footer>
+    <noscript><p class="container">Please enable JavaScript to view literature information.</p></noscript>
+  </body>
+</html>

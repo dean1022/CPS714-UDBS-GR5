@@ -1,0 +1,80 @@
+[
+  {
+    "literature_id": 1,
+    "title": "Database System Concepts",
+    "publication_year": 2019,
+    "total_access_slots": 15,
+    "category": "Computer Science",
+    "authors": [
+      "Abraham Silberschatz"
+    ],
+    "keywords": [
+      "databases",
+      "sql"
+    ],
+    "available_slots": 15,
+    "summary": ""
+  },
+  {
+    "literature_id": 2,
+    "title": "Introduction to Algorithms",
+    "publication_year": 2022,
+    "total_access_slots": 15,
+    "category": "Computer Science",
+    "authors": [
+      "Thomas Cormen"
+    ],
+    "keywords": [
+      "algorithms"
+    ],
+    "available_slots": 15,
+    "summary": ""
+  },
+  {
+    "literature_id": 3,
+    "title": "Clean Code",
+    "publication_year": 2008,
+    "total_access_slots": 15,
+    "category": "Software Engineering",
+    "authors": [
+      "Robert Martin"
+    ],
+    "keywords": [
+      "programming"
+    ],
+    "available_slots": 15,
+    "summary": ""
+  },
+  {
+    "literature_id": 4,
+    "title": "A Brief History of Time",
+    "publication_year": 1998,
+    "total_access_slots": 15,
+    "category": "Physics",
+    "authors": [
+      "Stephen Hawking"
+    ],
+    "keywords": [
+      "space",
+      "black holes"
+    ],
+    "available_slots": 15,
+    "summary": ""
+  },
+  {
+    "literature_id": 5,
+    "title": "Sapiens",
+    "publication_year": 2015,
+    "total_access_slots": 15,
+    "category": "History",
+    "authors": [
+      "Yuval Harari"
+    ],
+    "keywords": [
+      "humans",
+      "evolution"
+    ],
+    "available_slots": 15,
+    "summary": ""
+  }
+]
