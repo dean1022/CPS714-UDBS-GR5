@@ -18,9 +18,15 @@ async function showLiterature() {
       book.publication_year || "Not listed";
     document.querySelector("#book-keywords").textContent =
       book.keywords.join(", ") || "Not listed";
+    let summary = book.summary;
+
+    //Putting a blank line between paragraphs
+    if (Array.isArray(summary)) {
+      summary = summary.join("\n\n");
+    }
+
     document.querySelector("#book-summary").textContent =
-      book.summary ||
-      "There isn't a summary for this title in the catalogue yet.";
+      summary || "There isn't a summary for this title in the catalogue yet.";
     let availability = document.querySelector("#availability");
     if (book.available_slots > 0) {
       availability.textContent = `Available · ${book.available_slots} of ${book.total_access_slots} access slots`;
