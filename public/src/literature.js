@@ -14,8 +14,31 @@ async function showLiterature() {
     borrowBtn.textContent=borrowed?'Borrowed':(book.available_slots<=0?'No slots available':'Borrow this book');
     borrowBtn.onclick=async()=>{
       borrowBtn.disabled=true;
-      try{await libraryRequest('borrow/'+book.literature_id,{method:'POST'});window.location.reload();}
-      catch(err){document.querySelector('#borrow-message').textContent=err.message;borrowBtn.disabled=false;}
+      document.querySelector('#borrow-message').textContent='';
+      try {
+        await libraryRequest('borrow/'+book.literature_id,{method:'POST'});
+        // Stay on this page. Show the new loan state without a progress message.
+        borrowBtn.textContent='Borrowed';
+        try {
+          const updated=await libraryRequest('book&id='+encodeURIComponent(book.literature_id));
+          const latest=updated.book;
+          const availability=document.querySelector('#availability');
+          if(latest.available_slots>0){
+            availability.textContent=`Available · ${latest.available_slots} of ${latest.total_access_slots} access slots`;
+            availability.classList.remove('unavailable');
+          } else {
+            availability.textContent='Currently unavailable · No access slots open';
+            availability.classList.add('unavailable');
+          }
+        } catch(e) {
+          // The loan succeeded; don't make the user think borrowing failed if the
+          // optional availability refresh encounters a temporary network error.
+          console.warn('Unable to refresh availability:',e);
+        }
+      } catch(err) {
+        document.querySelector('#borrow-message').textContent=err.message;
+        borrowBtn.disabled=false;
+      }
     };
 
     document.title = book.title + " | UDBS";
