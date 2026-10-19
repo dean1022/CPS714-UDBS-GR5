@@ -6,6 +6,11 @@ async function showLiterature() {
       "book&id=" + encodeURIComponent(params.get("id") || ""),
     );
     let book = data.book;
+    let borrowBtn=document.querySelector('#borrow-book');
+    borrowBtn.disabled=book.available_slots<=0;
+    borrowBtn.textContent=borrowBtn.disabled?'No slots available':'Borrow this book';
+    borrowBtn.onclick=async()=>{borrowBtn.disabled=true;try{await libraryRequest('borrow/'+book.literature_id,{method:'POST'});location.href='personal-library.html';}catch(err){document.querySelector('#borrow-message').textContent=err.message;borrowBtn.disabled=false;}};
+
     document.title = book.title + " | UDBS";
     document.querySelector("#book-title").textContent = book.title;
     document.querySelector("#cover-title").textContent = book.title;

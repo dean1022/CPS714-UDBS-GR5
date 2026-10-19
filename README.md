@@ -1,84 +1,37 @@
-# University Digital Borrowing System
+# UDBS, Group 5: Netlify + Render + Supabase
 
-Welcome to UDBS, our CPS714 Group 5 project. This is the Sprint 1 version of the app. You can sign in, browse the electronic literature catalogue and check the information for each title.
+This version keeps the original Python logic from Kusal and Megan and the Sprint 1 HTML/CSS/DOM frontend. The JavaScript Netlify backend has been removed, not translated line-by-line: original `library.py` and `auth.py` run on Render through `api.py`.
 
-For now, the app uses sample accounts and literature records. Borrowing, reading, returns, renewals and holds will be added in later sprints.
+## Deployment order
+1. Create a Supabase project and open **SQL Editor**. Run `supabase/schema.sql`, then `supabase/seed.sql`. (Run seed only once on a fresh database.) This seed exports the merged SQLite data, including dummy account hashes. Database rules are fixed at 15 concurrent slots, 30 active loans and 15 holds. Passwords were not re-created.
+2. In Supabase Connection settings copy the **Postgres connection string**, preferably its transaction/session pooler URL if your Render instance is IPv4-only. URL encode special characters in the password. Set SSL mode as required by Supabase. NEVER put this connection string in Netlify/public files.
+3. Deploy this repo to **Render** as a Blueprint (`render.yaml`) or Python web service. Configure `DATABASE_URL`, `FRONTEND_ORIGIN` (exact Netlify site URL, without trailing slash) and `CRON_SECRET` in Render environment variables. Health check: `/api/health`.
+4. In `public/src/common.js`, replace `__RENDER_API_URL__` with your Render HTTPS URL, for example `https://udbs-python-api.onrender.com`. This is a public API URL, not a secret.
+5. Deploy the repository root to **Netlify**. The included `netlify.toml` publishes `public` and does not deploy Netlify functions.
+6. Add dummy documents under `backend/ebooks` and update the relevant `literature.file_url` in Supabase to its **filename**. `GET /api/read/{id}` checks the active loan in Python and only opens files from the bundled ebooks directory.
 
-## Getting started
+## Original authors' source
+- `original_python/` contains the original merged backend (including its SQLite database module), for reference and comparison. **Never deploy original_python as the application.**
+- `backend/auth.py` and `backend/library.py` preserve login and lending rules. `backend/database.py` adapts their SQLite parameter syntax and result row operations to PostgreSQL.
+- `supabase/schema.sql` converts the original SQLite schema to PostgreSQL; `supabase/seed.sql` exports rows from the original SQLite database.
+- The browser JavaScript is DOM and HTTP code, not replicated lending/authentication business logic.
 
-If you've been given a link to the app, open it in your browser. You don't need to install anything to use the hosted version.
+## Local API
+```
+cd backend
+python -m venv .venv
+# activate your virtualenv
+pip install -r requirements.txt
+# Set DATABASE_URL and FRONTEND_ORIGIN in your terminal environment
+uvicorn api:app --reload
+```
 
-To put your own copy online, upload the contents of the extracted `udbs_sprint1` folder to a GitHub repository. `package.json`, `netlify.toml`, `public`, `data` and `netlify` should all be at the top level of the repository. Upload the actual files and folders, not the ZIP.
+Netlify local preview needs the frontend configured to reach your Render URL or local Python URL and CORS set accordingly.
 
-In Netlify, select **Add new project**, then **Import an existing project**. Choose GitHub and select your repository. Use these settings:
-
-| Setting             | Value               |
-| ------------------- | ------------------- |
-| Base directory      | Leave blank         |
-| Build command       | `npm run build`     |
-| Publish directory   | `public`            |
-| Functions directory | `netlify/functions` |
-
-These settings are also saved in `netlify.toml`. Netlify installs the dependencies and deploys the login service along with the pages. You don't need to install Netlify Dev or run a local server.
-
-Once the deployment finishes, open the site's Netlify address and sign in using one of the accounts below. You can use the provided `netlify.app` address without buying a domain. Later changes pushed to the connected GitHub branch will trigger another deployment.
-
-Keep the `netlify` and `data` folders in the repository. The login and catalogue need the hosted function, so uploading only `public` won't give you a working app. Open the deployed Netlify site to use the app. Opening an HTML file on your computer only shows the page layout.
-
-Netlify's [repository deployment guide](https://docs.netlify.com/start/quickstarts/deploy-from-repository/) has more help with connecting GitHub.
-
-## Signing in
-
-Use one of these accounts to try the app:
-
-| Account | University ID | Password       |
-| ------- | ------------- | -------------- |
-| Student | `501000001`   | `Library2026!` |
-| Faculty | `700000001`   | `Library2026!` |
-
-You can also sign in with `ava.chen@torontomu.ca` for the student account or `elaine.whitfield@torontomu.ca` for the faculty account.
-
-Enter the ID or email and password, then select **Sign in**. If you want to check what you've typed, select **Show password**.
-
-These are demo accounts. The app isn't connected to the university's login system, so please don't enter your real university password. There isn't an account registration option in this version.
-
-## Finding a title
-
-Once you're signed in, you'll see the catalogue. Each card shows the title, author, publication year, category and available access slots.
-
-To find something specific:
-
-1. Enter a title, author, category or keyword in the search box.
-2. Select **Search** or press Enter.
-3. Use the **Category** dropdown if you want to narrow the results.
-4. Use **Sort by** to put the results in alphabetical order by title or author.
-
-For a quick example, try searching for `sql`. You should see _Database System Concepts_.
-
-You can combine a search with a category filter. If nothing matches, try a different search or select **Clear filters** to see the full catalogue again.
-
-## Viewing literature information
-
-Select **View details** on a title's card to open its information page. You'll find its authors, publication year, category, keywords and available access slots there. Some titles don't have a summary yet, so the page will let you know when one isn't available.
-
-Select **Back to catalogue** to return to your results. Your search and filters will still be there. The **Catalogue** link in the navigation bar opens the full catalogue.
-
-The access-slot counts are sample data for Sprint 1. They don't change through borrowing yet because that feature isn't available in this version.
-
-## Logging out
-
-Select **Log out** in the top-right corner when you're finished. You'll return to the sign-in page and will need to sign in again to access the catalogue.
-
-Login sessions last up to eight hours. If your session ends while you're using the app, you'll be asked to sign in again.
-
-## If something isn't working
-
-- **Your login isn't accepted:** Check that you're using one of the demo accounts above and that the password matches, including the capital letters and exclamation mark.
-- **The catalogue has no results:** Clear your filters and try searching again.
-- **A title can't be found:** Go back to the catalogue and open it from its card.
-- **The login and catalogue service is unavailable:** Check that the latest Netlify deployment succeeded and includes the `library` function. Confirm that the repository contains `netlify/functions/library.mjs` and that the deployment settings match the table above.
-- **You see a connection error:** Check your internet connection, refresh the page and try again. If it keeps happening, check the function logs in Netlify for the error.
-
-## About this version
-
-UDBS is a course prototype for students and faculty. The interface uses HTML, CSS, JavaScript and Bootstrap. The login service uses Node.js, Netlify Functions and Netlify Blobs. Bootstrap's licence is included in the project files.
+## Important constraints
+- Authentication uses Megan's original salted SHA-256 password hashes for **demo compatibility only**. Use Argon2/bcrypt before real users.
+- Current API uses bearer tokens in `sessionStorage` to work across Netlify and Render origins. This is for the university prototype, not a production authentication design.
+- Expired loans are processed whenever borrowing/catalogue/library operations occur. For unattended expiry, schedule `POST /api/jobs/expire` with a `Bearer CRON_SECRET` header using an external scheduler. Render web service alone does not schedule this endpoint.
+- Source backend timestamps are **naive local strings**. Set `TZ=UTC` on Render and treat stored timestamps consistently. Frontend countdown display is approximate if browser timezone differs. Migrate timestamps to `TIMESTAMPTZ` for production.
+- Concurrent requests within one Render process are serialized by a lock. Multiple Render instances require PostgreSQL transaction-level locking to avoid overborrowing.
+- Run real end-to-end tests against your own deployed Supabase/Render/Netlify project. Those services cannot be deployed using this ZIP alone.
