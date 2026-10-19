@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Us | UDBS</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+  <link rel="stylesheet" href="src/styles.css" />
+  <style>
+    .about-intro { max-width: 760px; margin-bottom: 36px; }
+    .about-intro h1 { margin-bottom: 17px; }
+    .about-lead { font-size: 18px; line-height: 1.7; color: #56616a; }
+    .about-section { margin: 35px 0; }
+    .about-section h2 { margin-bottom: 18px; }
+    .about-panel { background: #edf3f7; padding: 28px; border-radius: 12px; }
+    .about-panel p { line-height: 1.8; margin-bottom: 0; }
+    .about-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
+    .team-member { background: #fff; border: 1px solid #dde2e5; border-radius: 11px; padding: 24px; }
+    .team-member h3 { font-size: 21px; margin-bottom: 11px; letter-spacing: -.5px; }
+    .team-member p { color: #56616a; line-height: 1.6; margin-bottom: 0; }
+    .member-label { display: block; font-size: 12px; font-weight: 700; color: #325b76; margin-bottom: 12px; }
+    .project-facts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px 28px; margin: 0; }
+    .project-facts div { padding: 14px 0; border-bottom: 1px solid #dde2e5; }
+    .project-facts dt { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #56616a; margin-bottom: 5px; }
+    .project-facts dd { font-size: 16px; margin-bottom: 0; }
+    .about-link { text-decoration: underline; text-underline-offset: 3px; }
+    @media(max-width: 767px) {
+      .about-grid, .project-facts { grid-template-columns: 1fr; }
+      .about-lead { font-size: 16px; }
+      .about-panel { padding: 22px; }
+      .navbar .container { gap: 12px; }
+      .nav-links { flex-wrap: wrap; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a class="navbar-brand" id="about-brand-link" href="index.html"><span class="logo">U</span> UDBS</a>
+      <div class="nav-links">
+        <a href="personal-library.html" class="signed-in-link" hidden>Personal Library</a>
+        <a href="catalogue.html" class="signed-in-link" hidden>Catalogue</a>
+        <a href="about.html" class="active" aria-current="page">About Us</a>
+        <a href="index.html" id="sign-in-link">Sign in</a>
+        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+      </div>
+    </div>
+  </nav>
+  <main class="container content">
+    <header class="about-intro">
+      <p class="eyebrow">THE PEOPLE BEHIND UDBS</p>
+      <h1>About Us</h1>
+      <p class="about-lead">We're Group 5 from Toronto Metropolitan University. We developed the University Digital Borrowing System (UDBS) as our group project for CPS714: Software Project Management.</p>
+    </header>
+
+    <section class="about-section" aria-labelledby="what-we-made">
+      <h2 id="what-we-made">What we made</h2>
+      <div class="about-panel">
+        <p>UDBS is a prototype digital library for university students and faculty. It lets users sign in, explore and search electronic literature, check availability, borrow titles and manage their active loans in a Personal Library. Our goal was to build a clear, usable borrowing experience while practising software development, sprint planning, integration and testing as a team.</p>
+      </div>
+    </section>
+
+    <section class="about-section" aria-labelledby="meet-team">
+      <h2 id="meet-team">Meet the team</h2>
+      <div class="about-grid">
+        <article class="team-member">
+          <span class="member-label">GROUP LEADER · DEVELOPER</span>
+          <h3>Dean Voss</h3>
+          <p>Project coordination, frontend development, integration, testing and project documentation.</p>
+        </article>
+        <article class="team-member">
+          <span class="member-label">TEAM MEMBER · DEVELOPER</span>
+          <h3>Kusal Amarathunge</h3>
+          <p>Database structure, literature catalogue, search and borrowing-related development.</p>
+        </article>
+        <article class="team-member">
+          <span class="member-label">TEAM MEMBER · DEVELOPER</span>
+          <h3>Megan Vieira</h3>
+          <p>User authentication, account data and literature access and return-related development.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="about-section" aria-labelledby="project-details">
+      <h2 id="project-details">Course and project information</h2>
+      <dl class="project-facts">
+        <div><dt>School</dt><dd>Toronto Metropolitan University (TMU)</dd></div>
+        <div><dt>Course</dt><dd>Software Project Management</dd></div>
+        <div><dt>Course code and section</dt><dd>CPS714 · Section 071</dd></div>
+        <div><dt>Group number</dt><dd>Group 5</dd></div>
+        <div><dt>Professor</dt><dd>Dr. Omar Falou</dd></div>
+        <div><dt>Teaching Assistant</dt><dd>Rhaed Khiati</dd></div>
+        <div><dt>Semester</dt><dd>Fall 2026</dd></div>
+        <div><dt>Project</dt><dd>University Digital Borrowing System</dd></div>
+      </dl>
+    </section>
+    <p><a class="about-link" id="about-back-link" href="index.html">&larr; Back to sign in</a></p>
+  </main>
+  <footer><div class="container">UDBS <span>CPS714 &middot; Group 5 &middot; Toronto Metropolitan University &copy; 2026</span></div></footer>
+  <script src="src/common.js"></script>
+  <script>
+    // About Us is a public page. Keep it accessible before and after signing in.
+    // Update the navigation to match the visitor's session without redirecting them.
+    const isSignedIn = Boolean(sessionStorage.getItem('udbs_token'));
+    document.querySelectorAll('.signed-in-link').forEach(link => link.hidden = !isSignedIn);
+    document.getElementById('sign-in-link').hidden = isSignedIn;
+    document.getElementById('logout-button').hidden = !isSignedIn;
+    document.getElementById('about-brand-link').href = isSignedIn ? 'catalogue.html' : 'index.html';
+    const backLink = document.getElementById('about-back-link');
+    backLink.href = isSignedIn ? 'catalogue.html' : 'index.html';
+    backLink.innerHTML = isSignedIn ? '&larr; Back to catalogue' : '&larr; Back to sign in';
+  </script>
+</body>
+</html>

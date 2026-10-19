@@ -1,3 +1,43 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Personal Library | UDBS</title><link rel="stylesheet" href="vendor/bootstrap.min.css"><link rel="stylesheet" href="src/styles.css"><script src="src/common.js" defer></script><script src="src/personal-library.js" defer></script></head><body>
-<nav class="navbar"><div class="container"><a class="navbar-brand" href="catalogue.html">UDBS</a><div class="nav-links"><a href="catalogue.html">Catalogue</a><a href="personal-library.html" class="active">Personal Library</a><button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button></div></div></nav>
-<p class="container message" id="page-message" role="status"></p><main class="container content" id="private-content" hidden><section class="catalogue-heading"><div><p class="eyebrow">YOUR DIGITAL SHELF</p><h1>Personal Library</h1><p>Your current loans and remaining borrowing time.</p></div></section><div id="loan-count"></div><div class="row g-4" id="my-loans"></div><p id="empty-loans" hidden>No active loans yet. <a href="catalogue.html">Browse the catalogue</a>.</p><section id="reading-section" hidden><h2 id="reading-title"></h2><pre id="reading-text" style="white-space:pre-wrap;word-break:break-word;padding:1.25rem;border:1px solid #ddd;border-radius:12px"></pre><button id="close-reading" type="button" class="btn btn-outline-dark">Close reader</button></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal Library | UDBS</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="src/styles.css">
+  <script src="src/common.js" defer></script>
+  <script src="src/personal-library.js" defer></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
+      <div class="nav-links">
+        <a href="personal-library.html" class="active" aria-current="page">Personal Library</a>
+        <a href="catalogue.html">Catalogue</a>
+        <a href="about.html">About Us</a>
+        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+      </div>
+    </div>
+  </nav>
+  <p class="container message" id="page-message" role="status" aria-live="polite"></p>
+  <main class="container content" id="private-content" hidden>
+    <section class="catalogue-heading">
+      <div>
+        <p class="eyebrow">YOUR DIGITAL SHELF</p>
+        <h1>Personal Library</h1>
+        <p>Your current loans and remaining borrowing time.</p>
+      </div>
+    </section>
+    <div id="loan-count" class="loan-count" aria-live="polite"></div>
+    <div class="row g-4" id="my-loans" hidden></div>
+    <p id="empty-loans" class="empty-loans" hidden>No active loans yet. <a href="catalogue.html">Browse the catalogue</a>.</p>
+    <section id="reading-section" hidden>
+      <h2 id="reading-title"></h2>
+      <pre id="reading-text" style="white-space:pre-wrap;word-break:break-word;padding:1.25rem;border:1px solid #ddd;border-radius:12px"></pre>
+      <button id="close-reading" type="button" class="btn btn-outline-dark">Close reader</button>
+    </section>
+  </main>
+</body>
+</html>
