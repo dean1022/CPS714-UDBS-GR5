@@ -14,7 +14,7 @@ async function showLiterature() {
     borrowBtn.textContent=borrowed?'Borrowed':(book.available_slots<=0?'No slots available':'Borrow this book');
     borrowBtn.onclick=async()=>{
       borrowBtn.disabled=true;
-      try{await libraryRequest('borrow/'+book.literature_id,{method:'POST'});location.href='personal-library.html';}
+      try{await libraryRequest('borrow/'+book.literature_id,{method:'POST'});window.location.reload();}
       catch(err){document.querySelector('#borrow-message').textContent=err.message;borrowBtn.disabled=false;}
     };
 
