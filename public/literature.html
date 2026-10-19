@@ -6,6 +6,14 @@
     <title>Literature information | UDBS</title>
     <link rel="stylesheet" href="vendor/bootstrap.min.css" />
     <link rel="stylesheet" href="src/styles.css" />
+    <style>
+      /* One quick, gentle screen blink to acknowledge a successful borrow. */
+      @keyframes borrow-confirm-flash { 0% {filter:brightness(1)} 30% {filter:brightness(1.35)} 100% {filter:brightness(1)} }
+      body.borrow-flash {animation:borrow-confirm-flash 300ms ease-out;}
+      @media (prefers-reduced-motion: reduce) {body.borrow-flash {animation:none;}}
+      /* Smooth navigation is supported by recent browsers; older ones fall back normally. */
+      @view-transition { navigation: auto; }
+    </style>
     <script src="src/common.js" defer></script>
     <script src="src/literature.js" defer></script>
   </head>

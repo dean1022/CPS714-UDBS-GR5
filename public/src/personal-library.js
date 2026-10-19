@@ -30,10 +30,18 @@ function enforceReaderExpiry(){
  }
 }
 
+function torontoDueDate(value) {
+ const timestamp=dueMillis(value);
+ if (!Number.isFinite(timestamp)) return 'Unavailable';
+ return new Intl.DateTimeFormat('en-CA', {
+  timeZone:'America/Toronto', month:'short', day:'numeric', year:'numeric',
+  hour:'numeric', minute:'2-digit', hour12:true, timeZoneName:'short'
+ }).format(new Date(timestamp));
+}
 function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans');document.querySelector('#empty-loans').hidden=!!loans.length;
  for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';// Render writes loan timestamps in UTC without an offset. Parse explicitly as UTC.
  const due=dueMillis(loan.due_at);const remain=Number.isFinite(due) ? Math.max(0,due-Date.now()) : 0;const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
- col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(loan.due_at)}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button></div></article>`;
+ col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(torontoDueDate(loan.due_at))}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button></div></article>`;
  col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);list.appendChild(col);}}
 async function loadLoans(){try{const d=await libraryRequest('loans');loans=d.loans;
  if(readingLoanId!==null&&!loans.some(loan=>String(loan.loan_id)===String(readingLoanId) && dueMillis(loan.due_at)>Date.now()))closeReader();

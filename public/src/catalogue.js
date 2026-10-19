@@ -57,7 +57,12 @@ async function loadBooks(filters) {
           <p class="author">${safeText(book.authors.join(", ") || "Author not listed")}</p>
           <div class="card-bottom"><span class="slots ${available ? "" : "unavailable"}">${slots}</span><a class="details-link">View details &rarr;</a></div>
         </article>`;
-      column.querySelector(".details-link").href = link;
+      const detailLink = column.querySelector(".details-link");
+      detailLink.href = link;
+      // Cache the selected catalogue record for immediate rendering on the details page.
+      detailLink.addEventListener('click', () => {
+        try { sessionStorage.setItem('udbs_selected_book', JSON.stringify(book)); } catch (_) {}
+      });
       column
         .querySelector(".details-link")
         .setAttribute("aria-label", "View details for " + book.title);
