@@ -73,6 +73,7 @@ def book_obj(book_id):
     b=library.book_details(book_id)
     cat=database.conn.execute('SELECT name FROM category WHERE category_id=?',(b['category_id'],)).fetchone()
     b['category']=cat['name'];b['available_slots']=b['free_slots'];b['summary']=b.get('summary') or ''
+    b['total_access_slots']=min(b['total_access_slots'],library.TEST_CONCURRENT_LOANS)
     b.pop('file_url',None)
     return b
 

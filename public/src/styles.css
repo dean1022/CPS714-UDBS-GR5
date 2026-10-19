@@ -496,3 +496,8 @@ footer span {
 .details-btn{white-space:nowrap}
 #reading-section{margin:2rem 0}
 #reading-pdf{background:#fafafa}
+
+/* Embedded page-only ebook reader: no browser PDF toolbar. */
+.pdf-pages { display:flex; flex-direction:column; gap:18px; align-items:center; max-height:76vh; overflow-y:auto; padding:16px; background:#eeeeee; border-radius:12px; }
+.pdf-page { display:block; max-width:100%; height:auto; background:white; box-shadow:0 2px 12px rgba(0,0,0,.15); }
+#pdf-loading {margin-top:12px;}

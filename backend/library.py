@@ -13,6 +13,9 @@ from database import conn  # the open database connection from database.py
 DECISION_WINDOW_HOURS = 72  # US-12: how long someone has to accept a book that became free
 REMINDER_HOURS_LEFT = 24  # send a reminder when this many hours are left in the window
 MAX_RENEWALS = 2  # US-08: how many times one loan can be renewed
+# Temporary Sprint 2 testing caps. Set both to 30 and 15 on Render after testing.
+TEST_MAX_LOANS = int(os.environ.get('UDBS_MAX_ACTIVE_LOANS', '3'))
+TEST_CONCURRENT_LOANS = int(os.environ.get('UDBS_MAX_CONCURRENT_LOANS', '3'))
 
 # ---------------------------------------------------------------------------------------------
 # Clock: lets the demo "skip ahead" in time to show auto-returns and expired holds
@@ -76,7 +79,7 @@ def free_slots(book_id):
     reserved = conn.execute(  # count holds that are READY (that slot is saved for that person)
         "SELECT COUNT(*) FROM hold WHERE literature_id = ? AND status = 'READY'", (book_id,)
     ).fetchone()[0]  # same trick to read the count
-    return book["total_access_slots"] - on_loan - reserved  # whatever is left is free
+    return max(0, min(book["total_access_slots"], TEST_CONCURRENT_LOANS) - on_loan - reserved)  # test cap applies even to older rows
 
 
 def people_waiting(book_id):
@@ -182,6 +185,17 @@ def book_details(book_id):
     return book  # hand it back to main.py to print
 
 
+def format_loan_duration(total_minutes):
+    """Make the configured number of loan minutes readable for test messages."""
+    days, leftover = divmod(total_minutes, 24 * 60)
+    hours, minutes = divmod(leftover, 60)
+    parts = []
+    for value, unit in ((days, "day"), (hours, "hour"), (minutes, "minute")):
+        if value:
+            parts.append(f"{value} {unit}{'' if value == 1 else 's'}")
+    return " ".join(parts) or "0 minutes"
+
+
 # ---------------------------------------------------------------------------------------------
 # US-06: Borrow a book into your Personal Library
 # ---------------------------------------------------------------------------------------------
@@ -195,8 +209,8 @@ def borrow(user_id, book_id, hold_id=None):
     ).fetchone()  # a row means yes, None means no
     if already:  # can't borrow the same book twice
         fail(user_id, f"You already have '{book['title']}'.")  # stop with a message
-    if active_loan_count(user_id) >= user["max_loans"]:  # at their limit?
-        fail(user_id, f"Loan limit reached: you can have {user['max_loans']} books at once.", "LOAN_LIMIT_REACHED")  # stop
+    if active_loan_count(user_id) >= min(user["max_loans"], TEST_MAX_LOANS):  # at their limit?
+        fail(user_id, f"Loan limit reached: you can have {min(user['max_loans'], TEST_MAX_LOANS)} books at once.", "LOAN_LIMIT_REACHED")  # stop
     if hold_id is None and (free_slots(book_id) <= 0 or people_waiting(book_id) > 0):  # no slot, or others are in line first
         fail(user_id, f"'{book['title']}' isn't available. Place a hold to join the line.")  # stop
     if hold_id is not None:
@@ -209,17 +223,19 @@ def borrow(user_id, book_id, hold_id=None):
     if demo_minutes:
         try:
             n=int(demo_minutes)
-            if not 2 <= n <= 120: raise ValueError()
+            if not 1 <= n <= 525600: raise ValueError()
         except ValueError:
-            raise LibraryError('UDBS_DEMO_LOAN_MINUTES must be a whole number from 2 to 120.')
+            raise LibraryError('UDBS_DEMO_LOAN_MINUTES must be a whole number from 1 to 525600.')
         due = now() + timedelta(minutes=n)
+        duration_text = format_loan_duration(n)
     else:
         due = now() + timedelta(days=book["loan_period_days"])  # when the loan ends
+        duration_text = format_loan_duration(int(book["loan_period_days"]) * 1440)
     cursor = conn.execute(  # create the loan
         "INSERT INTO loan (user_id, literature_id, hold_id, borrowed_at, due_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, book_id, hold_id, stamp(now()), stamp(due)),  # the values for each ? mark
     )
-    notify(user_id, "BORROW_SUCCESS", f"'{book['title']}' is in your library until {stamp(due)}.", loan_id=cursor.lastrowid)  # confirm it
+    notify(user_id, "BORROW_SUCCESS", f"'{book['title']}' borrowed for {duration_text}, until {stamp(due)}.", loan_id=cursor.lastrowid)  # confirm it
     conn.commit()  # save to the file
 
 
