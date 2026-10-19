@@ -1,7 +1,9 @@
 let loans=[];
 const list=document.querySelector('#my-loans');
 function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans');document.querySelector('#empty-loans').hidden=!!loans.length;
- for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';const due=new Date(loan.due_at.replace(' ','T'));const remain=Math.max(0,due.getTime()-Date.now());const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
+ for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';// Render writes loan timestamps in UTC without an offset. Parse explicitly as UTC.
+ const rawDue=String(loan.due_at || '').trim();
+ const due=new Date(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(rawDue) ? rawDue.replace(' ','T') : rawDue.replace(' ','T')+'Z');const remain=Number.isFinite(due.getTime()) ? Math.max(0,due.getTime()-Date.now()) : 0;const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
  col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(loan.due_at)}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><button class="btn btn-dark read-btn">Read</button><button class="btn btn-outline-dark return-btn">Return early</button></div></article>`;
  col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);list.appendChild(col);}}
 async function loadLoans(){try{const d=await libraryRequest('loans');loans=d.loans;draw();}catch(e){showPageError(e);}}
