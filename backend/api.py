@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import database, library, auth
 
@@ -114,12 +114,14 @@ def early_return(request:Request,loan_id:int):
 @app.get('/api/read/{book_id}')
 def read(request:Request,book_id:int):
     with connection():
-        user=current_user(request);library.check_due_items()
+        user=current_user(request)
+        library.check_due_items()
         filename=pathlib.Path(library.read_book(user['user_id'],book_id)).name
-        # Only bundled demo literature; never open arbitrary paths from database.
-        path=pathlib.Path(__file__).parent/'ebooks'/filename
-        if not path.is_file(): raise HTTPException(404,'The sample file has not been added yet.')
-        return PlainTextResponse(path.read_text(encoding='utf-8'),headers={'Cache-Control':'no-store'})
+        # Convert the original .txt literature reference to its PDF counterpart.
+        pdf_name=pathlib.Path(filename).stem+'.pdf'
+        path=pathlib.Path(__file__).parent/'ebooks'/pdf_name
+        if not path.is_file(): raise HTTPException(404,'PDF unavailable. Add the PDF to backend/ebooks first.')
+        return FileResponse(path,media_type='application/pdf',filename=pdf_name,content_disposition_type='inline',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
 @app.post('/api/jobs/expire')
 def expire(request:Request):

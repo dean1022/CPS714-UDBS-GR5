@@ -4,6 +4,7 @@
 # later swap the text menu for a website without changing any of these rules.
 
 from datetime import datetime, timedelta  # tools for working with dates and times
+import os
 from database import conn  # the open database connection from database.py
 
 # ---------------------------------------------------------------------------------------------
@@ -203,7 +204,17 @@ def borrow(user_id, book_id, hold_id=None):
         if hold is None:
             fail(user_id, "That hold is not ready for this user and book.")
         conn.execute("UPDATE hold SET status='ACCEPTED' WHERE hold_id=?", (hold_id,))
-    due = now() + timedelta(days=book["loan_period_days"])  # when the loan ends
+    # Optional demonstration-only duration. Normal loans remain 14 days.
+    demo_minutes=os.environ.get('UDBS_DEMO_LOAN_MINUTES','').strip()
+    if demo_minutes:
+        try:
+            n=int(demo_minutes)
+            if not 2 <= n <= 120: raise ValueError()
+        except ValueError:
+            raise LibraryError('UDBS_DEMO_LOAN_MINUTES must be a whole number from 2 to 120.')
+        due = now() + timedelta(minutes=n)
+    else:
+        due = now() + timedelta(days=book["loan_period_days"])  # when the loan ends
     cursor = conn.execute(  # create the loan
         "INSERT INTO loan (user_id, literature_id, hold_id, borrowed_at, due_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, book_id, hold_id, stamp(now()), stamp(due)),  # the values for each ? mark

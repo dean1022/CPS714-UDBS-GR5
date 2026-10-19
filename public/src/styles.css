@@ -485,3 +485,14 @@ footer span {
 #book-summary {
   white-space: pre-line;
 }
+
+/* Personal Library empty state: prevent the empty Bootstrap grid's negative gutter from overlapping text. */
+.loan-count { margin: 18px 0 20px; font-weight: 600; }
+.empty-loans { margin-top: 8px; line-height: 1.6; }
+.empty-loans a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Personal Library action links and PDF reader */
+.card-bottom{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.details-btn{white-space:nowrap}
+#reading-section{margin:2rem 0}
+#reading-pdf{background:#fafafa}
