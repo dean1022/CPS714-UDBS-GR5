@@ -1,6 +1,6 @@
 let loans=[];
 const list=document.querySelector('#my-loans');
-function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active loans';document.querySelector('#empty-loans').hidden=!!loans.length;
+function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans');document.querySelector('#empty-loans').hidden=!!loans.length;
  for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';const due=new Date(loan.due_at.replace(' ','T'));const remain=Math.max(0,due.getTime()-Date.now());const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
  col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(loan.due_at)}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><button class="btn btn-dark read-btn">Read</button><button class="btn btn-outline-dark return-btn">Return early</button></div></article>`;
  col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);list.appendChild(col);}}
