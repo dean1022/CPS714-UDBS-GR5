@@ -6,7 +6,9 @@
 #Sprint 2: borrow (US-06), remaining time (US-07), read (US-03), automatic return (US-05),
 #          early return (US-09), shortened demo loans (NFR-05)
 #Sprint 3: holds and the hold queue (US-10), the holds page (US-11), the decision window (US-12),
-#          cancelling holds (US-13), passing freed slots to the queue (BR-15), renewing loans (US-08)
+#          cancelling holds (US-13), passing freed slots to the queue (BR-15), renewing loans (US-08),
+#          shortened demo hold windows (NFR-05)
+#notifications (US-14) are Sprint 4, so only the "loan returned" message from US-09 is checked
 #the Sprint 3 holds and renew tests are based on Megan's test_decision_window.py and
 #updated_test_loans.py, rewritten to fit library.py
 #
@@ -31,6 +33,7 @@ if not TEST_URL:
 #database.py reads DATABASE_URL, so point it at the test database before anything connects
 os.environ["DATABASE_URL"] = TEST_URL
 os.environ.pop("UDBS_DEMO_LOAN_MINUTES", None)  # use the normal 14 day loans in every test
+os.environ.pop("UDBS_DEMO_HOLD_MINUTES", None)  # and the normal 72 hour hold window
 
 import auth
 import database
@@ -372,7 +375,6 @@ def test_borrow_adds_loan_to_personal_library():
     library.borrow(a, book)
     loans = library.my_loans(a)
     assert [l["literature_id"] for l in loans] == [book]
-    assert len(notes(a, "BORROW_SUCCESS")) == 1
 
 
 def test_borrow_records_time_and_14_day_due_date():
@@ -408,7 +410,6 @@ def test_borrow_blocked_at_30_loans():
     with pytest.raises(LibraryError):
         library.borrow(a, add_book(15, "Book 31"))
     assert library.active_loan_count(a) == 30
-    assert len(notes(a, "LOAN_LIMIT_REACHED")) == 1
 
 
 def test_borrow_blocked_when_all_15_slots_are_taken():
@@ -709,7 +710,6 @@ def test_hold_limit_is_enforced():
     _, third = full_book_with_queue([])
     with pytest.raises(LibraryError):
         library.place_hold(b, third)
-    assert len(notes(b, "HOLD_LIMIT_REACHED")) == 1
 
 
 def test_hold_limit_of_15():
@@ -759,6 +759,28 @@ def test_my_holds_shows_title_status_and_position():
     assert holds[0]["title"] == "Test Book"
     assert holds[0]["status"] == "WAITING"
     assert holds[0]["queue_position"] == 2
+
+
+def test_my_holds_shows_queue_length_and_book():
+    b, c, d = add_user(), add_user(), add_user()
+    _, book = full_book_with_queue([b, c, d])
+    hold = library.my_holds(c)[0]
+    assert hold["literature_id"] == book
+    assert (hold["queue_position"], hold["queue_length"]) == (2, 3)
+
+
+def test_hold_queue_preview_shows_positions_without_names():
+    #US-10: the current queue is shown before a hold is confirmed
+    b, c = add_user(), add_user()
+    _, book = full_book_with_queue([b, c])
+    queue = library.hold_queue(book)
+    assert [spot["position"] for spot in queue] == [1, 2]
+    assert all(set(spot) == {"position", "placed_at"} for spot in queue)
+
+
+def test_hold_queue_preview_for_missing_book_fails():
+    with pytest.raises(LibraryError):
+        library.hold_queue(99999)
 
 
 def test_my_holds_shows_deadline_for_ready_hold():
@@ -876,13 +898,6 @@ def test_offer_gives_72_hours():
     free_the_slot(owner, book)
     hold = hold_of(b, book)
     assert as_time(hold["decision_deadline"]) - as_time(hold["ready_at"]) == timedelta(hours=72)
-
-
-def test_offer_sends_hold_ready_notification():
-    b = add_user()
-    owner, book = full_book_with_queue([b])
-    free_the_slot(owner, book)
-    assert len(notes(b, "HOLD_READY")) == 1
 
 
 def test_saved_slot_is_not_available_to_others():
@@ -1074,7 +1089,6 @@ def test_hold_expires_at_deadline_and_passes_on():
     library.check_due_items()
     assert hold_of(b, book)["status"] == "EXPIRED"
     assert hold_of(c, book)["status"] == "READY"
-    assert len(notes(b, "HOLD_EXPIRED")) == 1
 
 
 def test_expired_hold_with_empty_queue_frees_slot():
@@ -1095,18 +1109,6 @@ def test_accepted_hold_never_expires():
     skip(hours=73)
     library.check_due_items()
     assert hold_row(hold_id)["status"] == "ACCEPTED"
-
-
-def test_reminder_sent_once_when_under_24_hours_left():
-    b = add_user()
-    owner, book = full_book_with_queue([b])
-    free_the_slot(owner, book)
-    library.check_due_items()
-    assert notes(b, "DECISION_REMINDER") == []
-    skip(hours=49)
-    library.check_due_items()
-    library.check_due_items()
-    assert len(notes(b, "DECISION_REMINDER")) == 1
 
 
 def test_queue_runs_through_in_order():
@@ -1149,7 +1151,6 @@ def test_renew_adds_14_days():
     renewed = loan_of(a, book)
     assert as_time(renewed["due_at"]) - as_time(loan["due_at"]) == timedelta(days=14)
     assert renewed["renewal_count"] == 1
-    assert len(notes(a, "LOAN_RENEWED")) == 1
 
 
 def test_renew_blocked_after_two_renewals():
@@ -1173,10 +1174,8 @@ def test_renew_blocked_when_someone_is_waiting():
     assert loan_of(owner, book)["due_at"] == loan["due_at"]
 
 
-@pytest.mark.xfail(reason="library.renew() only checks WAITING holds, not READY ones (BR-12)")
 def test_renew_blocked_when_another_user_has_ready_hold():
     #BR-12 from Megan's tests: a hold that's been offered (READY) also blocks renewing
-    #this fails right now on purpose so the gap stays visible, see the reason above
     owner1, owner2 = add_user(), add_user()
     b = add_user()
     book = add_book(2)
@@ -1206,6 +1205,17 @@ def test_renew_blocked_for_expired_loan():
     with pytest.raises(LibraryError):
         renew_like_the_api(a, loan_id)
     assert loan_of(a, book)["status"] == "RETURNED"
+
+
+def test_renew_blocked_for_expired_loan_before_auto_return_runs():
+    #BR-11 is checked inside renew() too, not only by the automatic return
+    a = add_user()
+    book = add_book(1)
+    library.borrow(a, book)
+    skip(days=14)
+    with pytest.raises(LibraryError):
+        library.renew(a, loan_of(a, book)["loan_id"])
+    assert loan_of(a, book)["renewal_count"] == 0
 
 
 def test_renew_blocked_for_returned_loan():
@@ -1238,3 +1248,53 @@ def test_my_loans_shows_renewal_count():
     library.borrow(a, book)
     renew_like_the_api(a, loan_of(a, book)["loan_id"])
     assert library.my_loans(a)[0]["renewal_count"] == 1
+
+
+#NFR-05: shortened hold window for demos
+
+def test_demo_hold_minutes_shortens_the_window(monkeypatch):
+    monkeypatch.setenv("UDBS_DEMO_HOLD_MINUTES", "5")
+    b = add_user()
+    owner, book = full_book_with_queue([b])
+    free_the_slot(owner, book)
+    hold = hold_of(b, book)
+    assert as_time(hold["decision_deadline"]) - as_time(hold["ready_at"]) == timedelta(minutes=5)
+
+
+def test_short_demo_hold_window_expires(monkeypatch):
+    monkeypatch.setenv("UDBS_DEMO_HOLD_MINUTES", "5")
+    b, c = add_user(), add_user()
+    owner, book = full_book_with_queue([b, c])
+    free_the_slot(owner, book)
+    skip(minutes=5)
+    library.check_due_items()
+    assert hold_of(b, book)["status"] == "EXPIRED"
+    assert hold_of(c, book)["status"] == "READY"
+
+
+@pytest.mark.parametrize("value", ["0", "-5", "abc", "525601"])
+def test_bad_demo_hold_minutes_are_refused(monkeypatch, value):
+    b = add_user()
+    owner, book = full_book_with_queue([b])
+    monkeypatch.setenv("UDBS_DEMO_HOLD_MINUTES", value)
+    with pytest.raises(LibraryError):
+        free_the_slot(owner, book)
+
+
+#Sprint 4 features stay out until Sprint 4
+
+def test_no_sprint_4_notifications_yet():
+    #US-14 notifications come in Sprint 4. Until then only US-09's "loan returned" message is saved
+    b, c = add_user(max_holds=1), add_user()
+    owner, book = full_book_with_queue([b, c])
+    with pytest.raises(LibraryError):
+        library.place_hold(b, add_book(1))  # an error, not a hold
+    free_the_slot(owner, book)  # a hold becomes ready
+    library.accept_hold(b, hold_of(b, book)["hold_id"])  # a successful borrow
+    kinds = {row["type"] for row in run("SELECT type FROM notification")}
+    assert kinds == {"LOAN_RETURNED"}
+
+
+def test_notification_functions_are_not_in_library_yet():
+    assert not hasattr(library, "my_notifications")
+    assert not hasattr(library, "unread_count")

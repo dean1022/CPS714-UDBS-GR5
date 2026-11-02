@@ -626,3 +626,53 @@ footer span {
 .pdf-page { display:block; max-width:100%; height:auto; background:white; box-shadow:0 2px 12px rgba(0,0,0,.15); }
 
 #pdf-loading {margin-top:12px;}
+
+/* Holds: queue preview on the book page and status on the Holds page */
+.hold-queue {
+  border: 1px solid #dde2e5;
+  border-radius: 10px;
+  background: white;
+  padding: 16px 20px;
+  margin: 4px 0 25px;
+  max-width: 480px;
+}
+
+.hold-queue-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.hold-queue-list {
+  padding-left: 0;
+  list-style: none;
+  font-size: 14px;
+  color: #59616a;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.hold-queue-note {
+  font-size: 14px;
+  margin: 0;
+}
+
+.hold-status {
+  font-weight: 600;
+  color: #325b76;
+}
+
+.hold-status.ready {
+  color: #356349;
+}
+
+.renewals {
+  font-size: 13px;
+  color: #59616a;
+  margin: 10px 0 0;
+}
+
+#borrow-message a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

@@ -10,12 +10,12 @@ from database import conn  # the open database connection from database.py
 # ---------------------------------------------------------------------------------------------
 # Settings you can change
 # ---------------------------------------------------------------------------------------------
-DECISION_WINDOW_HOURS = 72  # US-12: how long someone has to accept a book that became free
-REMINDER_HOURS_LEFT = 24  # send a reminder when this many hours are left in the window
-MAX_RENEWALS = 2  # US-08: how many times one loan can be renewed
-# Temporary Sprint 2 testing caps. Set both to 30 and 15 on Render after testing.
-TEST_MAX_LOANS = int(os.environ.get('UDBS_MAX_ACTIVE_LOANS', '3'))
-TEST_CONCURRENT_LOANS = int(os.environ.get('UDBS_MAX_CONCURRENT_LOANS', '3'))
+DECISION_WINDOW_HOURS = 72  # US-12 and BR-08: how long someone has to accept a book that became free
+MAX_RENEWALS = 2  # US-08 and BR-09: how many times one loan can be renewed
+# Loan limits. They follow BR-02 (30 loans per user) and BR-03 (15 slots per book) unless
+# UDBS_MAX_ACTIVE_LOANS or UDBS_MAX_CONCURRENT_LOANS is set lower on Render for testing.
+TEST_MAX_LOANS = int(os.environ.get('UDBS_MAX_ACTIVE_LOANS', '30'))
+TEST_CONCURRENT_LOANS = int(os.environ.get('UDBS_MAX_CONCURRENT_LOANS', '15'))
 
 # ---------------------------------------------------------------------------------------------
 # Clock: lets the demo "skip ahead" in time to show auto-returns and expired holds
@@ -47,7 +47,8 @@ class LibraryError(Exception):
 # Small helpers used by many functions below
 # ---------------------------------------------------------------------------------------------
 def notify(user_id, kind, message, loan_id=None, hold_id=None):
-    """US-14: save a notification for a user."""
+    """Save a notification for a user. Only the "loan returned" message (US-09) uses this for now;
+    the rest of the notifications come with US-14 in Sprint 4."""
     conn.execute(  # add one row to the notification table
         "INSERT INTO notification (user_id, loan_id, hold_id, type, message, created_at)"
         " VALUES (?, ?, ?, ?, ?, ?)",  # the ? marks get filled with the values below
@@ -55,11 +56,29 @@ def notify(user_id, kind, message, loan_id=None, hold_id=None):
     )
 
 
-def fail(user_id, message, kind="ERROR"):
-    """Save the problem as a notification, then stop the current action with an error."""
-    notify(user_id, kind, message)  # US-14 says users get notified about errors too
-    conn.commit()  # save the notification before we stop
-    raise LibraryError(message)  # stop here; main.py catches this and prints the message
+def fail(user_id, message):
+    """Stop the current action with an error message for the user."""
+    raise LibraryError(message)  # stop here; api.py sends the message back to the website
+
+
+def minutes_setting(name):
+    """Read a demo setting in whole minutes from Render (NFR-05). Returns None when it isn't set."""
+    value = os.environ.get(name, '').strip()
+    if not value:
+        return None
+    try:
+        minutes = int(value)
+        if not 1 <= minutes <= 525600:
+            raise ValueError()
+    except ValueError:
+        raise LibraryError(f'{name} must be a whole number from 1 to 525600.')
+    return minutes
+
+
+def decision_window():
+    """US-12 and NFR-05: 72 hours, or a shorter window for demos set with UDBS_DEMO_HOLD_MINUTES."""
+    minutes = minutes_setting('UDBS_DEMO_HOLD_MINUTES')
+    return timedelta(minutes=minutes) if minutes else timedelta(hours=DECISION_WINDOW_HOURS)
 
 
 def get_book(book_id):
@@ -115,15 +134,12 @@ def give_free_slots_to_holds(book_id):
         ).fetchone()  # one row, or None if nobody is waiting
         if first is None:  # nobody is waiting...
             break  # ...so the slot simply stays free
-        deadline = now() + timedelta(hours=DECISION_WINDOW_HOURS)  # they have until this time to decide
+        deadline = now() + decision_window()  # they have until this time to decide
         conn.execute(  # mark their hold as READY and start the clock
             "UPDATE hold SET status = 'READY', queue_position = NULL, ready_at = ?, decision_deadline = ?"
             " WHERE hold_id = ?",
             (stamp(now()), stamp(deadline), first["hold_id"]),  # the values for the three ? marks
         )
-        title = get_book(book_id)["title"]  # used in the message
-        notify(first["user_id"], "HOLD_READY",  # tell them the good news
-               f"'{title}' is ready for you. Accept or decline by {stamp(deadline)}.", hold_id=first["hold_id"])
         renumber_queue(book_id)  # everyone else moves up one place
 
 
@@ -210,7 +226,7 @@ def borrow(user_id, book_id, hold_id=None):
     if already:  # can't borrow the same book twice
         fail(user_id, f"You already have '{book['title']}'.")  # stop with a message
     if active_loan_count(user_id) >= min(user["max_loans"], TEST_MAX_LOANS):  # at their limit?
-        fail(user_id, f"Loan limit reached: you can have {min(user['max_loans'], TEST_MAX_LOANS)} books at once.", "LOAN_LIMIT_REACHED")  # stop
+        fail(user_id, f"Loan limit reached: you can have {min(user['max_loans'], TEST_MAX_LOANS)} books at once.")  # stop
     if hold_id is None and (free_slots(book_id) <= 0 or people_waiting(book_id) > 0):  # no slot, or others are in line first
         fail(user_id, f"'{book['title']}' isn't available. Place a hold to join the line.")  # stop
     if hold_id is not None:
@@ -218,24 +234,16 @@ def borrow(user_id, book_id, hold_id=None):
         if hold is None:
             fail(user_id, "That hold is not ready for this user and book.")
         conn.execute("UPDATE hold SET status='ACCEPTED' WHERE hold_id=?", (hold_id,))
-    # Optional demonstration-only duration. Normal loans remain 14 days.
-    demo_minutes=os.environ.get('UDBS_DEMO_LOAN_MINUTES','').strip()
+    # NFR-05: UDBS_DEMO_LOAN_MINUTES makes new loans shorter for demos. Normal loans are 14 days (BR-01).
+    demo_minutes = minutes_setting('UDBS_DEMO_LOAN_MINUTES')
     if demo_minutes:
-        try:
-            n=int(demo_minutes)
-            if not 1 <= n <= 525600: raise ValueError()
-        except ValueError:
-            raise LibraryError('UDBS_DEMO_LOAN_MINUTES must be a whole number from 1 to 525600.')
-        due = now() + timedelta(minutes=n)
-        duration_text = format_loan_duration(n)
+        due = now() + timedelta(minutes=demo_minutes)
     else:
         due = now() + timedelta(days=book["loan_period_days"])  # when the loan ends
-        duration_text = format_loan_duration(int(book["loan_period_days"]) * 1440)
-    cursor = conn.execute(  # create the loan
+    conn.execute(  # create the loan
         "INSERT INTO loan (user_id, literature_id, hold_id, borrowed_at, due_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, book_id, hold_id, stamp(now()), stamp(due)),  # the values for each ? mark
     )
-    notify(user_id, "BORROW_SUCCESS", f"'{book['title']}' borrowed for {duration_text}, until {stamp(due)}.", loan_id=cursor.lastrowid)  # confirm it
     conn.commit()  # save to the file
 
 
@@ -300,8 +308,14 @@ def renew(user_id, loan_id):
     ).fetchone()  # one row or None
     if loan is None:  # not found
         fail(user_id, "That isn't one of your active loans.")  # stop
-    if people_waiting(loan["literature_id"]) > 0:  # someone else is waiting
-        fail(user_id, "Can't renew: other people are waiting for this book.")  # stop
+    if loan["due_at"] <= stamp(now()):  # BR-11: only while the loan is still active
+        fail(user_id, "Can't renew: this loan has already expired.")  # stop
+    others_holding = conn.execute(  # BR-12: anyone else waiting, or with an offer (READY) on this book
+        "SELECT COUNT(*) FROM hold WHERE literature_id = ? AND user_id <> ? AND status IN ('WAITING', 'READY')",
+        (loan["literature_id"], user_id),
+    ).fetchone()[0]
+    if others_holding > 0:  # someone else has an active hold
+        fail(user_id, "Can't renew: another user has a hold on this book.")  # stop
     if loan["renewal_count"] >= MAX_RENEWALS:  # renewed too many times already
         fail(user_id, f"Can't renew more than {MAX_RENEWALS} times.")  # stop
     book = get_book(loan["literature_id"])  # we need its loan length
@@ -310,7 +324,6 @@ def renew(user_id, loan_id):
     conn.execute(  # save the new date and count the renewal
         "UPDATE loan SET due_at = ?, renewal_count = renewal_count + 1 WHERE loan_id = ?", (stamp(new_due), loan_id)
     )
-    notify(user_id, "LOAN_RENEWED", f"'{book['title']}' renewed until {stamp(new_due)}.", loan_id=loan_id)  # confirm it
     conn.commit()  # save to the file
 
 
@@ -339,7 +352,7 @@ def place_hold(user_id, book_id):
         "SELECT COUNT(*) FROM hold WHERE user_id = ? AND status IN ('WAITING', 'READY')", (user_id,)
     ).fetchone()[0]  # read the number
     if open_holds >= user["max_holds"]:  # at their limit?
-        fail(user_id, f"Hold limit reached: you can have {user['max_holds']} holds at once.", "HOLD_LIMIT_REACHED")  # stop
+        fail(user_id, f"Hold limit reached: you can have {user['max_holds']} holds at once.")  # stop
     conn.execute(  # add them to the back of the line
         "INSERT INTO hold (user_id, literature_id, placed_at, queue_position) VALUES (?, ?, ?, ?)",
         (user_id, book_id, stamp(now()), people_waiting(book_id) + 1),  # their position = people ahead + 1
@@ -348,14 +361,26 @@ def place_hold(user_id, book_id):
 
 
 def my_holds(user_id):
-    """The user's open holds with their place in line (or their deadline if READY)."""
+    """US-11: the user's open holds with their place in line (or their deadline if READY)."""
     rows = conn.execute(  # open holds joined with the book title
-        "SELECT h.hold_id, l.title, h.status, h.queue_position, h.decision_deadline"
+        "SELECT h.hold_id, h.literature_id, l.title, h.status, h.placed_at, h.queue_position, h.decision_deadline"
         " FROM hold h JOIN literature l ON l.literature_id = h.literature_id"
-        " WHERE h.user_id = ? AND h.status IN ('WAITING', 'READY') ORDER BY h.placed_at",  # oldest first
+        " WHERE h.user_id = ? AND h.status IN ('WAITING', 'READY') ORDER BY h.placed_at, h.hold_id",  # oldest first
         (user_id,),
     ).fetchall()  # get them all
-    return [dict(row) for row in rows]  # turn each row into a normal dictionary
+    # queue_length lets the page show "#2 of 5"
+    return [dict(row) | {"queue_length": people_waiting(row["literature_id"])} for row in rows]
+
+
+def hold_queue(book_id):
+    """US-10: the current line for a book, shown before someone places a hold.
+    Only positions and dates, so other users' names stay private."""
+    get_book(book_id)  # checks the book exists
+    rows = conn.execute(
+        "SELECT queue_position, placed_at FROM hold WHERE literature_id = ? AND status = 'WAITING' ORDER BY queue_position",
+        (book_id,),
+    ).fetchall()
+    return [{"position": row["queue_position"], "placed_at": row["placed_at"]} for row in rows]
 
 
 def cancel_hold(user_id, hold_id):
@@ -418,43 +443,10 @@ def check_due_items():
     ).fetchall()  # get them all
     for hold in expired_holds:  # expire each one
         conn.execute("UPDATE hold SET status = 'EXPIRED' WHERE hold_id = ?", (hold["hold_id"],))  # mark it expired
-        title = get_book(hold["literature_id"])["title"]  # used in the message
-        notify(hold["user_id"], "HOLD_EXPIRED", f"Your 72 hours for '{title}' ran out; it went to the next person.",
-               hold_id=hold["hold_id"])  # tell them
         give_free_slots_to_holds(hold["literature_id"])  # the next person in line gets it
 
-    reminder_time = stamp(now() + timedelta(hours=REMINDER_HOURS_LEFT))  # "deadline is before this" = less than 24h left
-    needs_reminder = conn.execute(  # READY holds close to their deadline that haven't been reminded yet
-        "SELECT * FROM hold h WHERE status = 'READY' AND decision_deadline <= ?"
-        " AND NOT EXISTS (SELECT 1 FROM notification n WHERE n.hold_id = h.hold_id AND n.type = 'DECISION_REMINDER')",
-        (reminder_time,),
-    ).fetchall()  # get them all
-    for hold in needs_reminder:  # remind each one once
-        notify(hold["user_id"], "DECISION_REMINDER", f"Less than {REMINDER_HOURS_LEFT} hours left to accept your hold "
-               f"(deadline {hold['decision_deadline']}).", hold_id=hold["hold_id"])  # send the reminder
 
     conn.commit()  # save everything to the file
-
-
-# ---------------------------------------------------------------------------------------------
-# US-14: Read your notifications
-# ---------------------------------------------------------------------------------------------
-def my_notifications(user_id):
-    """All of the user's notifications, newest last. Marks them as read."""
-    rows = conn.execute(  # every notification for this user
-        "SELECT type, message, created_at, is_read FROM notification WHERE user_id = ? ORDER BY notification_id",
-        (user_id,),
-    ).fetchall()  # get them all
-    conn.execute("UPDATE notification SET is_read = 1 WHERE user_id = ?", (user_id,))  # they've seen them now
-    conn.commit()  # save to the file
-    return [dict(row) for row in rows]  # turn each row into a normal dictionary
-
-
-def unread_count(user_id):
-    """How many notifications the user hasn't seen yet."""
-    return conn.execute(  # count the unread ones
-        "SELECT COUNT(*) FROM notification WHERE user_id = ? AND is_read = 0", (user_id,)
-    ).fetchone()[0]  # read the number
 
 
 # ---------------------------------------------------------------------------------------------

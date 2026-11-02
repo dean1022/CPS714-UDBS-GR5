@@ -130,13 +130,13 @@ def place_hold(request:Request,book_id:int):
 def holds(request:Request):
     with connection():
         user=current_user(request);library.check_due_items()
-        result=library.my_holds(user['user_id'])
-        for h in result:
-            # how many people are in line for this book, so the page can show "#2 of 5"
-            book_id=database.conn.execute('SELECT literature_id FROM hold WHERE hold_id=?',(h['hold_id'],)).fetchone()['literature_id']
-            h['literature_id']=book_id
-            h['queue_length']=library.people_waiting(book_id)
-        return {'holds':result}
+        return {'holds':library.my_holds(user['user_id'])}
+
+@app.get('/api/book/{book_id}/queue')
+def queue(request:Request,book_id:int):
+    with connection():
+        current_user(request);library.check_due_items()
+        return {'queue':library.hold_queue(book_id)}
 
 @app.post('/api/holds/{hold_id}/cancel')
 def cancel_hold(request:Request,hold_id:int):
