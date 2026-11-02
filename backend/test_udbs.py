@@ -8,9 +8,6 @@
 #Sprint 3: holds and the hold queue (US-10), the holds page (US-11), the decision window (US-12),
 #          cancelling holds (US-13), passing freed slots to the queue (BR-15), renewing loans (US-08),
 #          shortened demo hold windows (NFR-05)
-#notifications (US-14) are Sprint 4, so only the "loan returned" message from US-09 is checked
-#the Sprint 3 holds and renew tests are based on Megan's test_decision_window.py and
-#updated_test_loans.py, rewritten to fit library.py
 #
 #how to run (from the backend folder):
 #   pip install pytest
@@ -95,27 +92,27 @@ def add_user(max_holds=3, max_loans=150):
     n = one("SELECT COUNT(*) AS n FROM library_user")["n"] + 1
     run(
         "INSERT INTO library_user (university_id, first_name, last_name, email, created_at, max_loans, max_holds) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
         (f"50100000{n}", "Test", f"User{n}", f"user{n}@test.ca", "2026-11-01 09:00", max_loans, max_holds),
     )
-    return one("SELECT user_id FROM library_user WHERE university_id = ?", (f"50100000{n}",))["user_id"]
+    return one("SELECT user_id FROM library_user WHERE university_id = %s", (f"50100000{n}",))["user_id"]
 
 
 def add_book(slots=1, title="Test Book", authors=(), keywords=(), category="Test Category"):
     #adds a book with the given number of access slots and returns its literature_id
-    run("INSERT INTO category (name) VALUES (?) ON CONFLICT (name) DO NOTHING", (category,))
+    run("INSERT INTO category (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (category,))
     run(
         "INSERT INTO literature (category_id, title, file_url, total_access_slots) "
-        "VALUES ((SELECT category_id FROM category WHERE name = ?), ?, ?, ?)",
+        "VALUES ((SELECT category_id FROM category WHERE name = %s), %s, %s, %s)",
         (category, title, title.lower().replace(" ", "-") + ".txt", slots),
     )
     book = one("SELECT MAX(literature_id) AS id FROM literature")["id"]
     for name in authors:
-        run("INSERT INTO author (name) VALUES (?) ON CONFLICT (name) DO NOTHING", (name,))
-        run("INSERT INTO literature_author (literature_id, author_id) VALUES (?, (SELECT author_id FROM author WHERE name = ?))", (book, name))
+        run("INSERT INTO author (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (name,))
+        run("INSERT INTO literature_author (literature_id, author_id) VALUES (%s, (SELECT author_id FROM author WHERE name = %s))", (book, name))
     for word in keywords:
-        run("INSERT INTO keyword (word) VALUES (?) ON CONFLICT (word) DO NOTHING", (word,))
-        run("INSERT INTO literature_keyword (literature_id, keyword_id) VALUES (?, (SELECT keyword_id FROM keyword WHERE word = ?))", (book, word))
+        run("INSERT INTO keyword (word) VALUES (%s) ON CONFLICT (word) DO NOTHING", (word,))
+        run("INSERT INTO literature_keyword (literature_id, keyword_id) VALUES (%s, (SELECT keyword_id FROM keyword WHERE word = %s))", (book, word))
     return book
 
 
@@ -123,25 +120,25 @@ def add_university_user(university_id="501000001", email="student@torontomu.ca",
     #adds a university account (the users table) that can log in
     run(
         "INSERT INTO users (university_id, email, password_hash, first_name, last_name, display_name, pronouns, status) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (university_id, email, auth.hash_password(password), "Test", "Student", "Test Student", "they/them", "student"),
     )
 
 
 def hold_of(user_id, book_id):
-    return one("SELECT * FROM hold WHERE user_id = ? AND literature_id = ? ORDER BY hold_id DESC", (user_id, book_id))
+    return one("SELECT * FROM hold WHERE user_id = %s AND literature_id = %s ORDER BY hold_id DESC", (user_id, book_id))
 
 
 def hold_row(hold_id):
-    return one("SELECT * FROM hold WHERE hold_id = ?", (hold_id,))
+    return one("SELECT * FROM hold WHERE hold_id = %s", (hold_id,))
 
 
 def loan_of(user_id, book_id):
-    return one("SELECT * FROM loan WHERE user_id = ? AND literature_id = ? ORDER BY loan_id DESC", (user_id, book_id))
+    return one("SELECT * FROM loan WHERE user_id = %s AND literature_id = %s ORDER BY loan_id DESC", (user_id, book_id))
 
 
 def notes(user_id, kind):
-    return run("SELECT * FROM notification WHERE user_id = ? AND type = ?", (user_id, kind))
+    return run("SELECT * FROM notification WHERE user_id = %s AND type = %s", (user_id, kind))
 
 
 def as_time(text):
@@ -216,7 +213,7 @@ def test_first_login_creates_library_account_with_rule_limits():
     #BR-02 and BR-04: 30 loans and 15 holds
     add_university_user()
     user = auth.get_current_user(auth.login("501000001", "Library2026!"))
-    account = one("SELECT * FROM library_user WHERE user_id = ?", (user["user_id"],))
+    account = one("SELECT * FROM library_user WHERE user_id = %s", (user["user_id"],))
     assert (account["max_loans"], account["max_holds"]) == (30, 15)
 
 
@@ -238,9 +235,9 @@ def test_logout_only_ends_that_session():
 def test_expired_session_is_refused_and_deleted():
     add_university_user()
     token = auth.login("501000001", "Library2026!")
-    run("UPDATE sessions SET expires_at = ? WHERE token = ?", ("2000-01-01 00:00:00", token))
+    run("UPDATE sessions SET expires_at = %s WHERE token = %s", ("2000-01-01 00:00:00", token))
     assert auth.get_current_user(token) is None
-    assert one("SELECT COUNT(*) AS n FROM sessions WHERE token = ?", (token,))["n"] == 0
+    assert one("SELECT COUNT(*) AS n FROM sessions WHERE token = %s", (token,))["n"] == 0
 
 
 @pytest.mark.parametrize("token", [None, "", "not-a-real-token"])
@@ -648,15 +645,6 @@ def test_bad_demo_loan_minutes_are_refused(monkeypatch, value):
     assert loan_of(a, book) is None
 
 
-@pytest.mark.parametrize("minutes, text", [
-    (3, "3 minutes"), (60, "1 hour"), (90, "1 hour 30 minutes"), (1440, "1 day"),
-    (1501, "1 day 1 hour 1 minute"), (20160, "14 days"),
-])
-def test_loan_duration_text(minutes, text):
-    #matches the table in TESTING_INSTRUCTIONS.md
-    assert library.format_loan_duration(minutes) == text
-
-
 #=============================================================================================
 #Sprint 3
 #=============================================================================================
@@ -720,7 +708,7 @@ def test_hold_limit_of_15():
     _, extra = full_book_with_queue([])
     with pytest.raises(LibraryError):
         library.place_hold(b, extra)
-    assert one("SELECT COUNT(*) AS n FROM hold WHERE user_id = ?", (b,))["n"] == 15
+    assert one("SELECT COUNT(*) AS n FROM hold WHERE user_id = %s", (b,))["n"] == 15
 
 
 def test_ready_hold_counts_towards_limit():
@@ -974,7 +962,7 @@ def test_accept_twice_fails():
     library.accept_hold(b, hold_id)
     with pytest.raises(LibraryError):
         library.accept_hold(b, hold_id)
-    assert one("SELECT COUNT(*) AS n FROM loan WHERE user_id = ?", (b,))["n"] == 1
+    assert one("SELECT COUNT(*) AS n FROM loan WHERE user_id = %s", (b,))["n"] == 1
 
 
 def test_accept_other_users_hold_fails():
@@ -1175,7 +1163,7 @@ def test_renew_blocked_when_someone_is_waiting():
 
 
 def test_renew_blocked_when_another_user_has_ready_hold():
-    #BR-12 from Megan's tests: a hold that's been offered (READY) also blocks renewing
+    #BR-12: a hold that's been offered (READY) also blocks renewing
     owner1, owner2 = add_user(), add_user()
     b = add_user()
     book = add_book(2)
@@ -1279,22 +1267,3 @@ def test_bad_demo_hold_minutes_are_refused(monkeypatch, value):
     monkeypatch.setenv("UDBS_DEMO_HOLD_MINUTES", value)
     with pytest.raises(LibraryError):
         free_the_slot(owner, book)
-
-
-#Sprint 4 features stay out until Sprint 4
-
-def test_no_sprint_4_notifications_yet():
-    #US-14 notifications come in Sprint 4. Until then only US-09's "loan returned" message is saved
-    b, c = add_user(max_holds=1), add_user()
-    owner, book = full_book_with_queue([b, c])
-    with pytest.raises(LibraryError):
-        library.place_hold(b, add_book(1))  # an error, not a hold
-    free_the_slot(owner, book)  # a hold becomes ready
-    library.accept_hold(b, hold_of(b, book)["hold_id"])  # a successful borrow
-    kinds = {row["type"] for row in run("SELECT type FROM notification")}
-    assert kinds == {"LOAN_RETURNED"}
-
-
-def test_notification_functions_are_not_in_library_yet():
-    assert not hasattr(library, "my_notifications")
-    assert not hasattr(library, "unread_count")

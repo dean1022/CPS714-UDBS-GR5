@@ -45,7 +45,7 @@ def login(identifier, password):
     conn = get_connection()
     # find user by uni ID or email
     user = conn.execute(
-        "SELECT university_id, password_hash FROM users WHERE university_id = ? OR email = ?",
+        "SELECT university_id, password_hash FROM users WHERE university_id = %s OR email = %s",
         (identifier, identifier),
     ).fetchone()
 
@@ -55,9 +55,9 @@ def login(identifier, password):
         raise AuthError("Invalid university ID/email or password.")
 
     # Link the university identity to the existing lending schema.
-    identity = conn.execute("SELECT * FROM users WHERE university_id=?", (user["university_id"],)).fetchone()
+    identity = conn.execute("SELECT * FROM users WHERE university_id=%s", (user["university_id"],)).fetchone()
     conn.execute("""INSERT INTO library_user (university_id, first_name, last_name, email, created_at, max_loans, max_holds)
-        VALUES (?, ?, ?, ?, ?, 30, 15) ON CONFLICT(university_id) DO UPDATE SET
+        VALUES (%s, %s, %s, %s, %s, 30, 15) ON CONFLICT(university_id) DO UPDATE SET
         first_name=excluded.first_name, last_name=excluded.last_name, email=excluded.email""",
         (identity["university_id"], identity["first_name"], identity["last_name"], identity["email"], datetime.now().strftime(TIME_FORMAT)))
     # create session that lasts 8 hrs
@@ -67,7 +67,7 @@ def login(identifier, password):
     token = secrets.token_urlsafe(32)
 
     conn.execute(
-        "INSERT INTO sessions (token, university_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO sessions (token, university_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
         (token, user["university_id"], now.strftime(TIME_FORMAT), expires.strftime(TIME_FORMAT)),
     )
     conn.commit()
@@ -88,7 +88,7 @@ def get_current_user(token):
                   u.display_name, u.pronouns, u.status, p.user_id, p.phone, p.address, p.max_loans, p.max_holds, s.expires_at
            FROM sessions s JOIN users u ON u.university_id = s.university_id
            JOIN library_user p ON p.university_id = u.university_id
-           WHERE s.token = ?""",
+           WHERE s.token = %s""",
         (token,),
     ).fetchone()
 
@@ -99,7 +99,7 @@ def get_current_user(token):
 
     # session ran out so delete it
     if row["expires_at"] <= datetime.now().strftime(TIME_FORMAT):
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.execute("DELETE FROM sessions WHERE token = %s", (token,))
         conn.commit()
         conn.close()
         return None
@@ -118,6 +118,6 @@ def logout(token):
     #delete session so user isn't logged in anymore
     if token:
         conn = get_connection()
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.execute("DELETE FROM sessions WHERE token = %s", (token,))
         conn.commit()
         conn.close()

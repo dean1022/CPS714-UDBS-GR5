@@ -24,10 +24,6 @@ def connection():
         finally:
             database._current.reset(token);raw.close()
 
-def error(e):
-    if isinstance(e,(auth.AuthError,library.LibraryError,ValueError)): return JSONResponse({"message":str(e)}, status_code=400)
-    raise e
-
 @app.exception_handler(auth.AuthError)
 @app.exception_handler(library.LibraryError)
 async def user_error(request,e): return JSONResponse({"message":str(e)},status_code=400)
@@ -38,10 +34,6 @@ def health(): return {"status":"ok"}
 class Credentials(BaseModel):
     identifier:str
     password:str
-
-class Identifier(BaseModel):
-    book_id:int|None=None
-    loan_id:int|None=None
 
 @app.post('/api/login')
 def login(body:Credentials):
@@ -70,7 +62,7 @@ def logout(request:Request):
 
 def book_obj(book_id):
     b=library.book_details(book_id)
-    cat=database.conn.execute('SELECT name FROM category WHERE category_id=?',(b['category_id'],)).fetchone()
+    cat=database.conn.execute('SELECT name FROM category WHERE category_id=%s',(b['category_id'],)).fetchone()
     b['category']=cat['name'];b['available_slots']=b['free_slots'];b['summary']=b.get('summary') or ''
     b['total_access_slots']=min(b['total_access_slots'],library.TEST_CONCURRENT_LOANS)
     b.pop('file_url',None)
@@ -86,7 +78,7 @@ def books(request:Request,q:str='',category:str='',sort:str='title'):
         if sort=='author': result.sort(key=lambda b:(', '.join(b['authors']).casefold(),b['title'].casefold()))
         else: result.sort(key=lambda b:b['title'].casefold())
         categories=[r['name'] for r in database.conn.execute('SELECT name FROM category ORDER BY name').fetchall()]
-        return {'books':result,'categories':categories,'total':database.conn.execute('SELECT count(*) FROM literature').fetchone()[0]}
+        return {'books':result,'categories':categories,'total':database.conn.execute('SELECT COUNT(*) AS n FROM literature').fetchone()['n']}
 
 @app.get('/api/book/{book_id}')
 def book(request:Request,book_id:int):
@@ -111,7 +103,7 @@ def early_return(request:Request,loan_id:int):
         user=current_user(request);library.return_book(user['user_id'],loan_id)
         return {'message':'Returned successfully'}
 
-# Sprint 3 routes: renew (US-08) and holds (US-10 to US-13). The rules live in library.py.
+# Renew (US-08) and holds (US-10 to US-13)
 @app.post('/api/renew/{loan_id}')
 def renew(request:Request,loan_id:int):
     with connection():
