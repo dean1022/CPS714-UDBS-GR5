@@ -1,5 +1,3 @@
--- Exported from merged SQLite library.db, preserving Megan account password hashes.
--- Run only on a fresh schema; repeat execution uses ON CONFLICT DO NOTHING.
 BEGIN;
 INSERT INTO "category" ("category_id","name") VALUES (1,'Computer Science') ON CONFLICT DO NOTHING;
 INSERT INTO "category" ("category_id","name") VALUES (3,'Software Engineering') ON CONFLICT DO NOTHING;

@@ -1,7 +1,3 @@
-"""Postgres adapter for Kusal/Megan's original Python code.
-The original SQL uses SQLite ? placeholders. This thin wrapper translates those
-into psycopg parameters, leaving library.py / auth.py behavior readable.
-"""
 import os, contextvars, re
 import psycopg
 from psycopg.rows import dict_row

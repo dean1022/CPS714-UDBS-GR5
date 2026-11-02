@@ -1,4 +1,3 @@
-"""UDBS API on Render. Existing auth.py and library.py own the business rules."""
 import os, pathlib, secrets, threading
 from contextlib import contextmanager
 from datetime import datetime
@@ -111,6 +110,54 @@ def early_return(request:Request,loan_id:int):
     with connection():
         user=current_user(request);library.return_book(user['user_id'],loan_id)
         return {'message':'Returned successfully'}
+
+# Sprint 3 routes: renew (US-08) and holds (US-10 to US-13). The rules live in library.py.
+@app.post('/api/renew/{loan_id}')
+def renew(request:Request,loan_id:int):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        library.renew(user['user_id'],loan_id)
+        return {'message':'Renewed successfully'}
+
+@app.post('/api/hold/{book_id}')
+def place_hold(request:Request,book_id:int):
+    with connection():
+        user=current_user(request)
+        library.place_hold(user['user_id'],book_id)
+        return {'message':'Hold placed'}
+
+@app.get('/api/holds')
+def holds(request:Request):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        result=library.my_holds(user['user_id'])
+        for h in result:
+            # how many people are in line for this book, so the page can show "#2 of 5"
+            book_id=database.conn.execute('SELECT literature_id FROM hold WHERE hold_id=?',(h['hold_id'],)).fetchone()['literature_id']
+            h['literature_id']=book_id
+            h['queue_length']=library.people_waiting(book_id)
+        return {'holds':result}
+
+@app.post('/api/holds/{hold_id}/cancel')
+def cancel_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request)
+        library.cancel_hold(user['user_id'],hold_id)
+        return {'message':'Hold cancelled'}
+
+@app.post('/api/holds/{hold_id}/accept')
+def accept_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request)
+        library.accept_hold(user['user_id'],hold_id)
+        return {'message':'Hold accepted. The book is now in your Personal Library.'}
+
+@app.post('/api/holds/{hold_id}/decline')
+def decline_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        library.decline_hold(user['user_id'],hold_id)
+        return {'message':'Hold declined'}
 
 @app.get('/api/read/{book_id}')
 def read(request:Request,book_id:int):
