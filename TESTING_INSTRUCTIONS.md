@@ -36,4 +36,5 @@ These happen on the website, so the automated tests can't cover them.
 - A ready hold shows a countdown with Accept and Decline. Accepting adds the book to the Personal Library.
 - When a ready hold's time runs out, it disappears from that user's Holds page and the next person gets the offer.
 - The Personal Library shows the time left on each loan, and Renew explains why when it's blocked.
+- Personal Info lets you change your preferred name and pronouns, and the new name shows after logging in again. The legal name, university ID, email and status can't be edited.
 - Pages and the footer look right on a laptop and on a phone.

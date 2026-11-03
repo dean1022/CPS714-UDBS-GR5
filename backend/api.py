@@ -151,6 +151,23 @@ def decline_hold(request:Request,hold_id:int):
         library.decline_hold(user['user_id'],hold_id)
         return {'message':'Hold declined'}
 
+# Personal information (US-15)
+class ProfileChange(BaseModel):
+    display_name:str
+    pronouns:str|None=None
+
+@app.get('/api/profile')
+def profile(request:Request):
+    with connection():
+        user=current_user(request)
+        return {'profile':library.get_profile(user['user_id'])}
+
+@app.post('/api/profile')
+def update_profile(request:Request,body:ProfileChange):
+    with connection():
+        user=current_user(request)
+        return {'message':'Your changes were saved.','profile':library.update_profile(user['user_id'],body.display_name,body.pronouns)}
+
 @app.get('/api/read/{book_id}')
 def read(request:Request,book_id:int):
     with connection():

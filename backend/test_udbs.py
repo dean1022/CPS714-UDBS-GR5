@@ -343,21 +343,55 @@ def test_details_for_missing_book_fail():
 
 #US-15: view and edit personal information
 
-def test_profile_shows_users_info():
+def logged_in_user():
     add_university_user()
-    user = auth.get_current_user(auth.login("501000001", "Library2026!"))
-    profile = library.get_profile(user["user_id"])
+    return auth.get_current_user(auth.login("501000001", "Library2026!"))["user_id"]
+
+
+def test_profile_shows_personal_info():
+    profile = library.get_profile(logged_in_user())
     assert profile["university_id"] == "501000001"
     assert profile["email"] == "student@torontomu.ca"
+    assert (profile["first_name"], profile["last_name"]) == ("Test", "Student")
+    assert profile["display_name"] == "Test Student"
+    assert profile["pronouns"] == "they/them"
+    assert profile["status"] == "student"
 
 
-def test_profile_edit_saves_and_keeps_university_info_read_only():
-    a = add_user()
-    before = library.get_profile(a)
-    library.update_profile(a, "416-555-0100", "350 Victoria St")
-    after = library.get_profile(a)
-    assert (after["phone"], after["address"]) == ("416-555-0100", "350 Victoria St")
-    assert (after["university_id"], after["email"], after["first_name"]) == (before["university_id"], before["email"], before["first_name"])
+def test_preferred_name_and_pronouns_can_be_changed():
+    user_id = logged_in_user()
+    library.update_profile(user_id, "  Tess  ", "she/her")
+    profile = library.get_profile(user_id)
+    assert (profile["display_name"], profile["pronouns"]) == ("Tess", "she/her")
+
+
+def test_legal_name_id_email_and_status_stay_the_same():
+    user_id = logged_in_user()
+    before = library.get_profile(user_id)
+    library.update_profile(user_id, "Tess", "she/her")
+    after = library.get_profile(user_id)
+    for field in ("university_id", "first_name", "last_name", "email", "status"):
+        assert after[field] == before[field]
+
+
+def test_new_preferred_name_shows_after_logging_in_again():
+    user_id = logged_in_user()
+    library.update_profile(user_id, "Tess", None)
+    assert auth.get_current_user(auth.login("501000001", "Library2026!"))["display_name"] == "Tess"
+
+
+def test_pronouns_can_be_cleared():
+    user_id = logged_in_user()
+    library.update_profile(user_id, "Tess", "  ")
+    assert library.get_profile(user_id)["pronouns"] is None
+
+
+@pytest.mark.parametrize("name, pronouns", [("", "she/her"), ("   ", None), ("x" * 51, None), ("Tess", "x" * 31)])
+def test_bad_profile_changes_are_refused(name, pronouns):
+    user_id = logged_in_user()
+    with pytest.raises(LibraryError):
+        library.update_profile(user_id, name, pronouns)
+    assert library.get_profile(user_id)["display_name"] == "Test Student"
 
 
 #=============================================================================================

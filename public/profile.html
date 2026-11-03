@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal Information | UDBS</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="src/styles.css">
+  <script src="src/common.js" defer></script>
+  <script src="src/profile.js" defer></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
+      <div class="nav-links">
+        <a href="personal-library.html">Personal Library</a>
+        <a href="holds.html">Holds</a>
+        <a href="catalogue.html">Catalogue</a>
+        <a href="profile.html" class="active" aria-current="page">Personal Info</a>
+        <a href="about.html">About Us</a>
+        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+      </div>
+    </div>
+  </nav>
+  <p class="container message" id="page-message" role="status" aria-live="polite"></p>
+  <main class="container content" id="private-content" hidden>
+    <section class="catalogue-heading">
+      <div>
+        <p class="eyebrow">YOUR ACCOUNT</p>
+        <h1>Personal Information</h1>
+        <p>Your legal name, university ID, email and status come from the university and can't be changed here.</p>
+      </div>
+    </section>
+    <div class="profile-layout">
+      <dl class="book-facts profile-facts">
+        <div><dt>Legal name</dt><dd id="legal-name"></dd></div>
+        <div><dt>University ID</dt><dd id="university-id"></dd></div>
+        <div><dt>Email</dt><dd id="email"></dd></div>
+        <div><dt>Status</dt><dd id="status"></dd></div>
+      </dl>
+      <form id="profile-form" class="profile-form" novalidate>
+        <label for="display-name" class="form-label">Preferred name</label>
+        <input id="display-name" class="form-control" type="text" maxlength="50" required autocomplete="nickname">
+        <label for="pronouns" class="form-label">Pronouns <span class="optional">(optional)</span></label>
+        <input id="pronouns" class="form-control" type="text" maxlength="30" placeholder="e.g. she/her, he/him, they/them">
+        <button id="save-profile" type="submit" class="btn btn-dark">Save changes</button>
+      </form>
+    </div>
+  </main>
+  <footer>
+    <div class="container">
+      UDBS
+      <span>CPS714 &middot; Group 5 &middot; Dean Voss &middot; Kusal Amarathunge &middot; Megan Vieira &copy; 2026</span>
+    </div>
+  </footer>
+  <noscript><p class="container">Please enable JavaScript to see your personal information.</p></noscript>
+</body>
+</html>

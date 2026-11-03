@@ -497,8 +497,9 @@ footer span {
   }
 
   .nav-links {
-    gap: 15px;
+    gap: 8px 15px;
     font-size: 13px;
+    flex-wrap: wrap;
   }
 
   h1 {
@@ -675,4 +676,39 @@ footer span {
 #borrow-message a {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Personal Information page */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  max-width: 900px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-form .form-control {
+  margin-bottom: 12px;
+}
+
+.profile-form .btn {
+  align-self: flex-start;
+}
+
+.optional {
+  color: #59616a;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+@media (max-width: 767px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }

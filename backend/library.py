@@ -415,12 +415,37 @@ def check_due_items():
 # ---------------------------------------------------------------------------------------------
 # US-15: View and edit personal information
 # ---------------------------------------------------------------------------------------------
+MAX_PREFERRED_NAME = 50  # longest preferred name allowed
+MAX_PRONOUNS = 30  # longest pronouns allowed
+
+
 def get_profile(user_id):
-    """The user's own row from the user table."""
-    return dict(conn.execute("SELECT * FROM library_user WHERE user_id = %s", (user_id,)).fetchone())  # as a dictionary
+    """The user's personal information. The legal name, university ID, email and status come
+    from the university's records and can't be changed here."""
+    row = conn.execute(
+        "SELECT u.university_id, u.first_name, u.last_name, u.display_name, u.pronouns, u.email, u.status"
+        " FROM library_user lu JOIN users u ON u.university_id = lu.university_id WHERE lu.user_id = %s",
+        (user_id,),
+    ).fetchone()
+    if row is None:
+        raise LibraryError("Personal information not found.")
+    return dict(row)
 
 
-def update_profile(user_id, phone, address):
-    """Only phone and address can be changed; name and email come from the university."""
-    conn.execute("UPDATE library_user SET phone = %s, address = %s WHERE user_id = %s", (phone, address, user_id))  # save the new values
+def update_profile(user_id, display_name, pronouns):
+    """FR-22: only the preferred name and pronouns can be changed."""
+    display_name = (display_name or "").strip()
+    pronouns = (pronouns or "").strip()
+    if not display_name:
+        fail(user_id, "Please enter a preferred name.")
+    if len(display_name) > MAX_PREFERRED_NAME:
+        fail(user_id, f"Preferred name can be at most {MAX_PREFERRED_NAME} characters.")
+    if len(pronouns) > MAX_PRONOUNS:
+        fail(user_id, f"Pronouns can be at most {MAX_PRONOUNS} characters.")
+    university_id = get_profile(user_id)["university_id"]  # also checks the user exists
+    conn.execute(
+        "UPDATE users SET display_name = %s, pronouns = %s WHERE university_id = %s",
+        (display_name, pronouns or None, university_id),
+    )
     conn.commit()  # save the changes
+    return get_profile(user_id)
