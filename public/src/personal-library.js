@@ -41,8 +41,8 @@ function torontoDueDate(value) {
 function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans');document.querySelector('#empty-loans').hidden=!!loans.length;
  for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';// Render writes loan timestamps in UTC without an offset. Parse explicitly as UTC.
  const due=dueMillis(loan.due_at);const remain=Number.isFinite(due) ? Math.max(0,due-Date.now()) : 0;const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
- col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(torontoDueDate(loan.due_at))}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button></div></article>`;
- col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);list.appendChild(col);}}
+ col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(torontoDueDate(loan.due_at))}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button><button class="btn btn-outline-dark renew-btn">Renew</button></div><p class="renewals">Renewed ${Number(loan.renewal_count||0)} of 2 times</p></article>`;
+ col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);col.querySelector('.renew-btn').onclick=()=>renewLoan(loan);list.appendChild(col);}}
 async function loadLoans(){try{const d=await libraryRequest('loans');loans=d.loans;
  if(readingLoanId!==null&&!loans.some(loan=>String(loan.loan_id)===String(readingLoanId) && dueMillis(loan.due_at)>Date.now()))closeReader();
  draw();}catch(e){showPageError(e);}}
@@ -104,6 +104,8 @@ async function openBook(loan){
  }catch(e){closeReader();showPageError(e);}
 }
 async function returnLoan(loan){if(!confirm('Return '+loan.title+' early?'))return;try{await libraryRequest('return/'+loan.loan_id,{method:'POST'});closeReader();await loadLoans();}catch(e){showPageError(e);}}
+// Renew a loan for 14 more days (US-08). The server explains why if it's blocked.
+async function renewLoan(loan){if(!confirm('Renew '+loan.title+' for 14 more days?'))return;try{await libraryRequest('renew/'+loan.loan_id,{method:'POST'});showPageMessage(loan.title+' was renewed.');await loadLoans();}catch(e){showPageError(e);}}
 document.querySelector('#close-reading').onclick=closeReader;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){enforceReaderExpiry();loadLoans();}});
 (async()=>{try{await checkLogin();document.querySelector('#private-content').hidden=false;await loadLoans();setInterval(()=>{if(!document.hidden)loadLoans();},10000);setInterval(()=>{if(!document.hidden)draw();},60000);}catch(e){showPageError(e);}})();

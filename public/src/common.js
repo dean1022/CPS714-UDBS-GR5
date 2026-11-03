@@ -68,3 +68,40 @@ function safeText(s) {
 }
 const logoutButton = document.querySelector("#logout-button");
 if (logoutButton) logoutButton.addEventListener("click", logout);
+
+// Shows a normal (not error) message at the top of the page
+function showPageMessage(text) {
+  let node = document.querySelector("#page-message");
+  if (node) {
+    node.textContent = text;
+    node.classList.remove("error");
+  }
+}
+
+// The backend saves times in UTC without a timezone, e.g. "2026-11-02 21:30"
+function utcMillis(value) {
+  const raw = String(value || "").trim().replace(" ", "T");
+  if (!raw) return NaN;
+  return new Date(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw) ? raw : raw + "Z").getTime();
+}
+
+// Shows a saved time in Toronto time, e.g. "Nov 2, 2026, 4:30 p.m. EST"
+function torontoTime(value) {
+  const timestamp = utcMillis(value);
+  if (!Number.isFinite(timestamp)) return "Unavailable";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto", month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short",
+  }).format(new Date(timestamp));
+}
+
+// Time left until a saved time, e.g. "2 days 5 hours 12 minutes"
+function timeLeftUntil(value) {
+  const end = utcMillis(value);
+  const left = Number.isFinite(end) ? Math.max(0, end - Date.now()) : 0;
+  const days = Math.floor(left / 86400000);
+  const hours = Math.floor((left % 86400000) / 3600000);
+  const minutes = Math.floor((left % 3600000) / 60000);
+  const word = (n, unit) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  return `${word(days, "day")} ${word(hours, "hour")} ${word(minutes, "minute")}`;
+}

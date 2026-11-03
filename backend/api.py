@@ -1,4 +1,3 @@
-"""UDBS API on Render. Existing auth.py and library.py own the business rules."""
 import os, pathlib, secrets, threading
 from contextlib import contextmanager
 from datetime import datetime
@@ -25,10 +24,6 @@ def connection():
         finally:
             database._current.reset(token);raw.close()
 
-def error(e):
-    if isinstance(e,(auth.AuthError,library.LibraryError,ValueError)): return JSONResponse({"message":str(e)}, status_code=400)
-    raise e
-
 @app.exception_handler(auth.AuthError)
 @app.exception_handler(library.LibraryError)
 async def user_error(request,e): return JSONResponse({"message":str(e)},status_code=400)
@@ -39,10 +34,6 @@ def health(): return {"status":"ok"}
 class Credentials(BaseModel):
     identifier:str
     password:str
-
-class Identifier(BaseModel):
-    book_id:int|None=None
-    loan_id:int|None=None
 
 @app.post('/api/login')
 def login(body:Credentials):
@@ -71,7 +62,7 @@ def logout(request:Request):
 
 def book_obj(book_id):
     b=library.book_details(book_id)
-    cat=database.conn.execute('SELECT name FROM category WHERE category_id=?',(b['category_id'],)).fetchone()
+    cat=database.conn.execute('SELECT name FROM category WHERE category_id=%s',(b['category_id'],)).fetchone()
     b['category']=cat['name'];b['available_slots']=b['free_slots'];b['summary']=b.get('summary') or ''
     b['total_access_slots']=min(b['total_access_slots'],library.TEST_CONCURRENT_LOANS)
     b.pop('file_url',None)
@@ -87,7 +78,7 @@ def books(request:Request,q:str='',category:str='',sort:str='title'):
         if sort=='author': result.sort(key=lambda b:(', '.join(b['authors']).casefold(),b['title'].casefold()))
         else: result.sort(key=lambda b:b['title'].casefold())
         categories=[r['name'] for r in database.conn.execute('SELECT name FROM category ORDER BY name').fetchall()]
-        return {'books':result,'categories':categories,'total':database.conn.execute('SELECT count(*) FROM literature').fetchone()[0]}
+        return {'books':result,'categories':categories,'total':database.conn.execute('SELECT COUNT(*) AS n FROM literature').fetchone()['n']}
 
 @app.get('/api/book/{book_id}')
 def book(request:Request,book_id:int):
@@ -111,6 +102,71 @@ def early_return(request:Request,loan_id:int):
     with connection():
         user=current_user(request);library.return_book(user['user_id'],loan_id)
         return {'message':'Returned successfully'}
+
+# Renew (US-08) and holds (US-10 to US-13)
+@app.post('/api/renew/{loan_id}')
+def renew(request:Request,loan_id:int):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        library.renew(user['user_id'],loan_id)
+        return {'message':'Renewed successfully'}
+
+@app.post('/api/hold/{book_id}')
+def place_hold(request:Request,book_id:int):
+    with connection():
+        user=current_user(request)
+        library.place_hold(user['user_id'],book_id)
+        return {'message':'Hold placed'}
+
+@app.get('/api/holds')
+def holds(request:Request):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        return {'holds':library.my_holds(user['user_id'])}
+
+@app.get('/api/book/{book_id}/queue')
+def queue(request:Request,book_id:int):
+    with connection():
+        current_user(request);library.check_due_items()
+        return {'queue':library.hold_queue(book_id)}
+
+@app.post('/api/holds/{hold_id}/cancel')
+def cancel_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request)
+        library.cancel_hold(user['user_id'],hold_id)
+        return {'message':'Hold cancelled'}
+
+@app.post('/api/holds/{hold_id}/accept')
+def accept_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request)
+        library.accept_hold(user['user_id'],hold_id)
+        return {'message':'Hold accepted. The book is now in your Personal Library.'}
+
+@app.post('/api/holds/{hold_id}/decline')
+def decline_hold(request:Request,hold_id:int):
+    with connection():
+        user=current_user(request);library.check_due_items()
+        library.decline_hold(user['user_id'],hold_id)
+        return {'message':'Hold declined'}
+
+# Personal information (US-15)
+class ProfileChange(BaseModel):
+    display_name:str
+    pronouns:str|None=None
+
+@app.get('/api/profile')
+def profile(request:Request):
+    with connection():
+        user=current_user(request)
+        return {'profile':library.get_profile(user['user_id'])}
+
+@app.post('/api/profile')
+def update_profile(request:Request,body:ProfileChange):
+    with connection():
+        user=current_user(request)
+        return {'message':'Your changes were saved.','profile':library.update_profile(user['user_id'],body.display_name,body.pronouns)}
 
 @app.get('/api/read/{book_id}')
 def read(request:Request,book_id:int):

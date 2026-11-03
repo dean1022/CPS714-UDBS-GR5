@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Holds | UDBS</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="src/styles.css">
+  <script src="src/common.js" defer></script>
+  <script src="src/holds.js" defer></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
+      <div class="nav-links">
+        <a href="personal-library.html">Personal Library</a>
+        <a href="holds.html" class="active" aria-current="page">Holds</a>
+        <a href="catalogue.html">Catalogue</a>
+        <a href="profile.html">Personal Info</a>
+        <a href="about.html">About Us</a>
+        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+      </div>
+    </div>
+  </nav>
+  <p class="container message" id="page-message" role="status" aria-live="polite"></p>
+  <main class="container content" id="private-content" hidden>
+    <section class="catalogue-heading">
+      <div>
+        <p class="eyebrow">YOUR PLACE IN LINE</p>
+        <h1>Holds</h1>
+        <p>Books you're waiting for, and offers you can accept or decline.</p>
+      </div>
+    </section>
+    <div id="hold-count" class="loan-count" aria-live="polite"></div>
+    <div class="row g-4" id="my-holds"></div>
+    <p id="empty-holds" class="empty-loans" hidden>No active holds. <a href="catalogue.html">Browse the catalogue</a>.</p>
+  </main>
+  <footer>
+    <div class="container">
+      UDBS
+      <span>CPS714 &middot; Group 5 &middot; Dean Voss &middot; Kusal Amarathunge &middot; Megan Vieira &copy; 2026</span>
+    </div>
+  </footer>
+  <noscript><p class="container">Please enable JavaScript to see your holds.</p></noscript>
+</body>
+</html>
