@@ -40,12 +40,19 @@
       <div class="nav-links">
         <a href="personal-library.html" class="signed-in-link" hidden>Personal Library</a>
         <a href="holds.html" class="signed-in-link" hidden>Holds</a>
-        <a href="profile.html" class="signed-in-link" hidden>Personal Info</a>
         <a href="catalogue.html" class="signed-in-link" hidden>Catalogue</a>
-        <a href="notifications.html" class="signed-in-link nav-notify" hidden>Notifications <span class="nav-badge" hidden></span></a>
         <a href="about.html" class="active" aria-current="page">About Us</a>
         <a href="index.html" id="sign-in-link">Sign in</a>
-        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+        <div class="account-menu" id="account-menu" hidden>
+          <button type="button" class="account-toggle" id="account-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="account-dropdown">
+            <span class="account-initial" aria-hidden="true"></span><span class="account-toggle-name">Account</span><span class="nav-badge" hidden></span><span class="account-caret" aria-hidden="true"></span>
+          </button>
+          <div class="account-dropdown" id="account-dropdown" role="menu" hidden>
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="notifications.html" role="menuitem" class="nav-notify">Notifications <span class="nav-badge" hidden></span></a>
+            <button type="button" role="menuitem" id="logout-button">Log out</button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -107,11 +114,15 @@
     const isSignedIn = Boolean(sessionStorage.getItem('udbs_token'));
     document.querySelectorAll('.signed-in-link').forEach(link => link.hidden = !isSignedIn);
     document.getElementById('sign-in-link').hidden = isSignedIn;
-    document.getElementById('logout-button').hidden = !isSignedIn;
+    document.getElementById('account-menu').hidden = !isSignedIn;
     document.getElementById('about-brand-link').href = isSignedIn ? 'catalogue.html' : 'index.html';
     const backLink = document.getElementById('about-back-link');
     backLink.href = isSignedIn ? 'catalogue.html' : 'index.html';
     backLink.innerHTML = isSignedIn ? '&larr; Back to catalogue' : '&larr; Back to sign in';
+    // Signed in: show who it is in the navigation bar too, from the details saved when the last page loaded
+    if (isSignedIn) {
+      try { showRole(JSON.parse(sessionStorage.getItem('udbs_user') || 'null')); } catch (_) {}
+    }
   </script>
 </body>
 </html>

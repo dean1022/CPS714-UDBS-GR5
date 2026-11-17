@@ -17,10 +17,17 @@
         <a href="personal-library.html">Personal Library</a>
         <a href="holds.html" class="active" aria-current="page">Holds</a>
         <a href="catalogue.html">Catalogue</a>
-        <a href="profile.html">Personal Info</a>
-        <a href="notifications.html" class="nav-notify">Notifications <span class="nav-badge" hidden></span></a>
         <a href="about.html">About Us</a>
-        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+        <div class="account-menu" id="account-menu" hidden>
+          <button type="button" class="account-toggle" id="account-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="account-dropdown">
+            <span class="account-initial" aria-hidden="true"></span><span class="account-toggle-name">Account</span><span class="nav-badge" hidden></span><span class="account-caret" aria-hidden="true"></span>
+          </button>
+          <div class="account-dropdown" id="account-dropdown" role="menu" hidden>
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="notifications.html" role="menuitem" class="nav-notify">Notifications <span class="nav-badge" hidden></span></a>
+            <button type="button" role="menuitem" id="logout-button">Log out</button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>

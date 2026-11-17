@@ -94,16 +94,7 @@ function clearFilters() {
 async function startCatalogue() {
   try {
     let user = await checkLogin();
-    document.querySelector("#user-name").textContent = user.display_name;
-    document.querySelector("#user-status").textContent =
-      (user.role_label || user.status) + " · " + user.university_id;
-    if (user.is_staff) {
-      // Staff mode: remind faculty of their borrowing perks
-      const perks = document.createElement("span");
-      perks.className = "small-note perks-note";
-      perks.textContent = (user.perks || []).join(" · ");
-      document.querySelector(".account-box").appendChild(perks);
-    }
+    // Who is signed in (name, ID, role and faculty perks) now shows in the navigation bar on every page
     document.querySelector("#private-content").hidden = false;
     let filters = new URLSearchParams(window.location.search);
     searchInput.value = filters.get("q") || "";

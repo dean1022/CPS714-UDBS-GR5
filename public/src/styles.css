@@ -848,3 +848,104 @@ footer span {
   #toast-area { right: 12px; left: 12px; bottom: 12px; width: auto; }
   .notifications-page .catalogue-heading { align-items: flex-start; }
 }
+
+/* Who is signed in: a slim second line in the navigation bar, on every page */
+.nav-account {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eef1f3;
+  font-size: 13px;
+  color: #59616a;
+}
+.nav-account strong { color: #2b2a2a; font-weight: 600; }
+.nav-account-label { text-transform: uppercase; letter-spacing: 1.5px; font-size: 10px; font-weight: 700; }
+.nav-account-perks { color: #325b76; }
+.nav-account-perks::before { content: "·"; margin-right: 10px; color: #59616a; }
+@media (max-width: 767px) {
+  .nav-account { justify-content: flex-start; font-size: 12px; }
+  .nav-account-perks { flex-basis: 100%; }
+  .nav-account-perks::before { content: none; }
+}
+
+/* Account menu: Profile, Notifications and Log out */
+.account-menu { position: relative; }
+.account-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #c8cfd4;
+  border-radius: 999px;
+  padding: 4px 12px 4px 4px;
+  font: inherit;
+  color: #2b2a2a;
+  cursor: pointer;
+}
+.account-toggle:hover,
+.account-toggle[aria-expanded="true"] { border-color: #325b76; background: #f5f8fa; }
+.account-toggle.active { border-color: #2b2a2a; }
+.account-initial {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #b2cdde;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+.account-toggle-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-caret {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  margin: -4px 2px 0 2px;
+  transform: rotate(45deg);
+  transition: transform 0.15s, margin 0.15s;
+}
+.account-toggle[aria-expanded="true"] .account-caret { transform: rotate(225deg); margin-top: 4px; }
+.account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e2e5e7;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(43, 42, 42, 0.12);
+  padding: 6px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+.account-dropdown [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  color: #2b2a2a;
+  width: 100%;
+}
+.account-dropdown [role="menuitem"]:hover,
+.account-dropdown [role="menuitem"]:focus-visible { background: #eef3f6; outline: none; }
+.account-dropdown .active { font-weight: 600; border-bottom: 0; padding: 10px 12px; background: #f5f8fa; }
+.account-dropdown #logout-button { border-top: 1px solid #eef1f3; border-radius: 0 0 7px 7px; margin-top: 4px; color: #a12222; }
+@media (max-width: 767px) {
+  .account-toggle-name { max-width: 90px; }
+  .account-dropdown { right: 0; min-width: 180px; }
+}

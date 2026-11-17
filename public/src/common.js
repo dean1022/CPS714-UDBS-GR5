@@ -51,8 +51,8 @@ function showPageError(err) {
 }
 async function checkLogin() {
   const d = await libraryRequest("session");
-  const b = document.querySelector("#logout-button");
-  if (b) b.hidden = false;
+  const menu = document.querySelector("#account-menu");
+  if (menu) menu.hidden = false;
   showRole(d.user);
   startNotifications(d.user);
   return d.user;
@@ -113,21 +113,37 @@ function timeLeftUntil(value) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Role distinction (Sprint 4): a Student or Faculty chip in the navigation bar
+// Role distinction (Sprint 4): who is signed in, shown in the navigation bar on every page
+// e.g. "Signed in as Liam · 501000002 [FACULTY] · No due date on loans · Up to 60 active loans · ..."
 // ---------------------------------------------------------------------------------------------
 function showRole(user) {
   if (!user) return;
   sessionStorage.setItem("udbs_user", JSON.stringify(user));
-  const links = document.querySelector(".nav-links");
-  if (!links || links.querySelector(".role-chip")) return;
+  fillAccountMenu(user);
+  const bar = document.querySelector(".navbar .container");
+  if (!bar || bar.querySelector(".nav-account")) return;
+
+  const account = document.createElement("div");
+  account.className = "nav-account";
+
+  const who = document.createElement("span");
+  who.className = "nav-account-who";
+  who.innerHTML = `<span class="nav-account-label">Signed in as</span> <strong>${safeText(user.display_name)}</strong> · ${safeText(user.university_id)}`;
+
   const chip = document.createElement("span");
   chip.className = "role-chip" + (user.is_staff ? " faculty" : "");
   chip.textContent = user.role_label || (user.is_staff ? "Faculty" : "Student");
-  chip.title = user.is_staff
-    ? "Faculty privileges: " + (user.perks || []).join(", ")
-    : "Student account";
-  const logoutBtn = links.querySelector("#logout-button");
-  links.insertBefore(chip, logoutBtn);
+
+  account.append(who, chip);
+
+  if (user.is_staff && (user.perks || []).length) {
+    // Staff mode: the faculty perks, so they're visible on every page
+    const perks = document.createElement("span");
+    perks.className = "nav-account-perks";
+    perks.textContent = user.perks.join(" · ");
+    account.appendChild(perks);
+  }
+  bar.appendChild(account);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -242,3 +258,53 @@ function showToast(note) {
   toast.querySelector(".toast-close").onclick = close;
   toastArea().appendChild(toast);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Account menu in the navigation bar: Profile, Notifications and Log out
+// ---------------------------------------------------------------------------------------------
+function fillAccountMenu(user) {
+  const name = (user && user.display_name) || "Account";
+  const initial = document.querySelector(".account-initial");
+  const label = document.querySelector(".account-toggle-name");
+  if (initial) initial.textContent = name.trim().charAt(0).toUpperCase();
+  if (label) label.textContent = name;
+  const toggle = document.querySelector("#account-toggle");
+  if (toggle) toggle.setAttribute("aria-label", "Account menu for " + name);
+}
+
+(function setupAccountMenu() {
+  const toggle = document.querySelector("#account-toggle");
+  const dropdown = document.querySelector("#account-dropdown");
+  if (!toggle || !dropdown) return;
+  const items = () => [...dropdown.querySelectorAll('[role="menuitem"]')];
+
+  function open(focusFirst) {
+    dropdown.hidden = false;
+    toggle.setAttribute("aria-expanded", "true");
+    if (focusFirst) items()[0].focus();
+  }
+  function close(returnFocus) {
+    if (dropdown.hidden) return;
+    dropdown.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+    if (returnFocus) toggle.focus();
+  }
+
+  toggle.addEventListener("click", () => (dropdown.hidden ? open(false) : close(false)));
+  toggle.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); open(true); }
+  });
+  dropdown.addEventListener("keydown", (e) => {
+    const list = items();
+    const at = list.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); list[(at + 1) % list.length].focus(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); list[(at - 1 + list.length) % list.length].focus(); }
+    if (e.key === "Home") { e.preventDefault(); list[0].focus(); }
+    if (e.key === "End") { e.preventDefault(); list[list.length - 1].focus(); }
+    if (e.key === "Tab") close(false);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(true); });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#account-menu")) close(false);
+  });
+})();
