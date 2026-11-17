@@ -1,10 +1,13 @@
 // Holds page (US-11), accept or decline an offer (US-12) and cancel a hold (US-13)
 let holds = [];
+let me = null; // signed-in user (Sprint 4: faculty get priority in the queue)
 const holdList = document.querySelector('#my-holds');
 
 function drawHolds() {
   holdList.innerHTML = '';
-  document.querySelector('#hold-count').textContent = holds.length + ' active ' + (holds.length === 1 ? 'hold' : 'holds');
+  document.querySelector('#hold-count').textContent = holds.length + ' active ' + (holds.length === 1 ? 'hold' : 'holds')
+    + (me && me.hold_limit ? ' of ' + me.hold_limit + ' allowed' : '')
+    + (me && me.is_staff ? ' · Faculty holds go ahead of student holds' : '');
   document.querySelector('#empty-holds').hidden = holds.length > 0;
 
   for (const hold of holds) {
@@ -76,7 +79,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) load
 
 (async () => {
   try {
-    await checkLogin();
+    me = await checkLogin();
     document.querySelector('#private-content').hidden = false;
     await loadHolds();
     setInterval(() => { if (!document.hidden) loadHolds(); }, 15000);  // queue positions stay up to date

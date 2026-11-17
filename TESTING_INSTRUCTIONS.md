@@ -18,11 +18,11 @@ Set these on Render under Dashboard → cps714-udbs-gr5 → Environment, then sa
 
 ## Automated tests
 
-`backend/test_udbs.py` checks the backend rules for Sprints 1 to 3.
+`backend/test_udbs.py` checks the backend rules for Sprints 1 to 3. `backend/test_staff_mode.py` is the team's staff mode tests and `backend/test_staff_notifications.py` checks notifications (Sprint 4).
 
 1. Install pytest: `pip install pytest`
 2. Set `TEST_DATABASE_URL` to a Postgres connection string. A separate test database or a local Postgres is safest.
-3. From the `backend` folder, run: `pytest test_udbs.py -v`
+3. From the `backend` folder, run: `pytest test_udbs.py test_staff_mode.py test_staff_notifications.py -v`
 
 Each test makes its own `udbs_test` schema and deletes it afterwards, so the normal tables aren't touched. Without `TEST_DATABASE_URL`, the tests are skipped.
 
@@ -38,3 +38,13 @@ These happen on the website, so the automated tests can't cover them.
 - The Personal Library shows the time left on each loan, and Renew explains why when it's blocked.
 - Personal Info lets you change your preferred name and pronouns, and the new name shows after logging in again. The legal name, university ID, email and status can't be edited.
 - Pages and the footer look right on a laptop and on a phone.
+
+## Sprint 4 checks in the browser
+
+- Sign in as a student (odd ID, e.g. 501000001) and a faculty account (even ID, e.g. 501000002 or 700000002). The nav bar shows a Student or Faculty chip.
+- Faculty: borrowing shows "No due date" and "Keep as long as you need" in the Personal Library, with no Renew button. Personal Info lists the faculty borrowing privileges.
+- Faculty placing a hold on a full book joins ahead of students (the book page shows the real place in line).
+- Borrow, return, renew or place a hold: a pop-up appears on that same page, fades after about 6 seconds, and the notification is listed on the Notifications page with its time.
+- A refused action (for example borrowing a book you already have) also pops up and is saved as an error notification.
+- With `UDBS_DEMO_HOLD_MINUTES=3`, a ready hold sends "Hold ready", then "Decision window closing" in the last minute.
+- Faculty loans never expire, so `UDBS_DEMO_LOAN_MINUTES` only shortens student loans. Use an odd demo ID to show expiry.

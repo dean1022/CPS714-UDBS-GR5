@@ -13,6 +13,21 @@ function showProfile(profile) {
   pronounsInput.value = profile.pronouns || '';
 }
 
+// Borrowing privileges for this role (Sprint 4: student vs faculty)
+function showPrivileges(user) {
+  const box = document.querySelector('#privileges');
+  if (!box || !user) return;
+  const rows = [
+    ['Active loans', `Up to ${user.loan_limit}`],
+    ['Active holds', `Up to ${user.hold_limit}`],
+    ['Loan length', user.is_staff ? 'No due date' : '14 days, renew up to 2 times'],
+    ['Hold queue', user.is_staff ? 'Ahead of student holds' : 'First come, first served'],
+  ];
+  box.innerHTML = `<h2>Borrowing privileges <span class="role-chip${user.is_staff ? ' faculty' : ''}">${safeText(user.role_label)}</span></h2>
+    <dl class="book-facts profile-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${safeText(v)}</dd></div>`).join('')}</dl>`;
+  box.hidden = false;
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!nameInput.value.trim()) {
@@ -37,7 +52,8 @@ form.addEventListener('submit', async (event) => {
 
 (async () => {
   try {
-    await checkLogin();
+    const user = await checkLogin();
+    showPrivileges(user);
     const data = await libraryRequest('profile');
     showProfile(data.profile);
     document.querySelector('#private-content').hidden = false;

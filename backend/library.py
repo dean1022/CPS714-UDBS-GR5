@@ -5,6 +5,9 @@
 from datetime import datetime, timedelta  # tools for working with dates and times
 import os
 from database import conn  # the open database connection from database.py
+import staff  # Sprint 4 staff mode (the team's staff.py): faculty get no due date, 60 loans and hold priority
+# staff_holds.py and staff_hold_offers.py are imported inside the functions that use them,
+# because they import this file too
 
 # ---------------------------------------------------------------------------------------------
 # Settings you can change
@@ -48,9 +51,27 @@ def notify(user_id, kind, message, loan_id=None, hold_id=None):
     )
 
 
-def fail(user_id, message):
-    """Stop the current action with an error message for the user."""
+# US-14 / FR-23: every refused action also leaves a notification. api.py rolls back the request
+# when an error happens, so the error notes are kept here and saved again after the rollback.
+pending_error_notes = []
+
+
+def fail(user_id, message, kind="ERROR"):
+    """Stop the current action with an error message for the user.
+    `kind` is LOAN_LIMIT or HOLD_LIMIT for the two limit messages FR-23 names, ERROR otherwise."""
+    if user_id is not None:
+        notify(user_id, kind, message)  # US-14: errors show on the Notifications page too
+        pending_error_notes.append((user_id, kind, message, stamp(now())))
     raise LibraryError(message)  # stop here; api.py sends the message back to the website
+
+
+def window_words(length):
+    """A time length in words for notification text, e.g. '72 hours' or '3 minutes'."""
+    minutes = int(length.total_seconds() // 60)
+    if minutes % 60 == 0:
+        hours = minutes // 60
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+    return f"{minutes} minute{'s' if minutes != 1 else ''}"
 
 
 def minutes_setting(name):
@@ -107,32 +128,51 @@ def active_loan_count(user_id):
     ).fetchone()["n"]  # read the number out of the result
 
 
+# Small helpers the staff mode files (staff_borrow.py, staff_holds.py, staff_hold_offers.py) call.
+# They look people up by university ID, and these tables use user_id.
+def user_id_for(university_id):
+    """The library user_id for a university ID."""
+    row = conn.execute("SELECT user_id FROM library_user WHERE university_id = %s", (university_id,)).fetchone()
+    if row is None:
+        raise LibraryError("No library account for that university ID.")
+    return row["user_id"]
+
+
+def count_active_loans(university_id):
+    """active_loan_count(), by university ID."""
+    return active_loan_count(user_id_for(university_id))
+
+
+def MAX_LOANS():
+    """The student loan limit: 30 (BR-02), or lower when UDBS_MAX_ACTIVE_LOANS is set for testing."""
+    return TEST_MAX_LOANS
+
+
+def loan_due(book, start=None):
+    """When a new student loan ends: 14 days (BR-01), or UDBS_DEMO_LOAN_MINUTES for demos (NFR-05)."""
+    start = start or now()
+    demo_minutes = minutes_setting('UDBS_DEMO_LOAN_MINUTES')
+    if demo_minutes:
+        return stamp(start + timedelta(minutes=demo_minutes))
+    return stamp(start + timedelta(days=book["loan_period_days"]))
+
+
 def renumber_queue(book_id):
     """After someone leaves the line, close the gap: positions become 1, 2, 3... again."""
-    waiting = conn.execute(  # everyone still waiting, in their current order
-        "SELECT hold_id FROM hold WHERE literature_id = %s AND status = 'WAITING' ORDER BY queue_position",
-        (book_id,),
-    ).fetchall()  # fetchall() gives a list of rows
+    # Staff mode: the order comes from staff_holds.get_queue(), staff first, then by time placed.
+    # With no staff in line this is the same first-in, first-out order as before.
+    from staff_holds import get_queue
+    waiting = get_queue(book_id)  # everyone still waiting, in queue order
     for position, row in enumerate(waiting, start=1):  # enumerate counts 1, 2, 3... as we loop
         conn.execute("UPDATE hold SET queue_position = %s WHERE hold_id = %s", (position, row["hold_id"]))  # save the new position
 
 
 def give_free_slots_to_holds(book_id):
-    """US-12: when a slot opens, the first person in line gets it and 72 hours to decide."""
-    while free_slots(book_id) > 0:  # keep going while there's a free slot to hand out
-        first = conn.execute(  # the person at the front of the line
-            "SELECT * FROM hold WHERE literature_id = %s AND status = 'WAITING' ORDER BY queue_position LIMIT 1",
-            (book_id,),
-        ).fetchone()  # one row, or None if nobody is waiting
-        if first is None:  # nobody is waiting...
-            break  # ...so the slot simply stays free
-        deadline = now() + decision_window()  # they have until this time to decide
-        conn.execute(  # mark their hold as READY and start the clock
-            "UPDATE hold SET status = 'READY', queue_position = NULL, ready_at = %s, decision_deadline = %s"
-            " WHERE hold_id = %s",
-            (stamp(now()), stamp(deadline), first["hold_id"]),  # the values for the three %s marks
-        )
-        renumber_queue(book_id)  # everyone else moves up one place
+    """US-12: when a slot opens, the first person in line gets it and 72 hours to decide.
+    Staff mode: staff_hold_offers.offer_next_hold() picks who is first (staff before students),
+    starts their decision window and sends the "hold ready" notification."""
+    from staff_hold_offers import offer_next_hold
+    offer_next_hold(conn, book_id, now())
 
 
 # ---------------------------------------------------------------------------------------------
@@ -189,7 +229,8 @@ def borrow(user_id, book_id, hold_id=None):
     if already:  # can't borrow the same book twice
         fail(user_id, f"You already have '{book['title']}'.")  # stop with a message
     if active_loan_count(user_id) >= min(user["max_loans"], TEST_MAX_LOANS):  # at their limit?
-        fail(user_id, f"Loan limit reached: you can have {min(user['max_loans'], TEST_MAX_LOANS)} books at once.")  # stop
+        fail(user_id, f"Loan limit reached: you can have {min(user['max_loans'], TEST_MAX_LOANS)} books at once.",
+             kind="LOAN_LIMIT")  # stop (kind: US-14 loan limit notification)
     if hold_id is None and (free_slots(book_id) <= 0 or people_waiting(book_id) > 0):  # no slot, or others are in line first
         fail(user_id, f"'{book['title']}' isn't available. Place a hold to join the line.")  # stop
     if hold_id is not None:
@@ -203,10 +244,16 @@ def borrow(user_id, book_id, hold_id=None):
         due = now() + timedelta(minutes=demo_minutes)
     else:
         due = now() + timedelta(days=book["loan_period_days"])  # when the loan ends
-    conn.execute(  # create the loan
-        "INSERT INTO loan (user_id, literature_id, hold_id, borrowed_at, due_at) VALUES (%s, %s, %s, %s, %s)",
-        (user_id, book_id, hold_id, stamp(now()), stamp(due)),  # the values for each %s mark
-    )
+    due_at = stamp(due)
+    # Staff mode: faculty borrow through staff_borrow.borrow_literature(), which gives them no due date
+    loan_id = conn.execute(  # create the loan
+        "INSERT INTO loan (user_id, literature_id, hold_id, borrowed_at, due_at) VALUES (%s, %s, %s, %s, %s)"
+        " RETURNING loan_id",
+        (user_id, book_id, hold_id, stamp(now()), due_at),  # the values for each %s mark
+    ).fetchone()["loan_id"]
+    # US-14: successful borrowing
+    notify(user_id, "BORROW_SUCCESS", f"You borrowed '{book['title']}'. You can read it in your Personal Library.",
+           loan_id=loan_id, hold_id=hold_id)
     conn.commit()  # save the changes
 
 
@@ -223,8 +270,13 @@ def my_loans(user_id):
     ).fetchall()  # get them all
     loans = []  # we'll build the result list here
     for row in rows:  # for each loan...
+        if staff.has_no_due_date(row["due_at"]):  # Staff mode: faculty loans have no due date
+            from staff_borrow import time_left_text
+            loans.append(dict(row) | {"time_left": time_left_text(row["due_at"]), "no_due_date": True})
+            continue
         left = datetime.strptime(row["due_at"], "%Y-%m-%d %H:%M") - now()  # ...work out the time left
-        loans.append(dict(row) | {"time_left": f"{left.days} days {left.seconds // 3600} hours"})  # ...and add it as text
+        loans.append(dict(row) | {"time_left": f"{left.days} days {left.seconds // 3600} hours",
+                                  "no_due_date": False})  # ...and add it as text
     return loans  # hand the list back
 
 
@@ -271,6 +323,8 @@ def renew(user_id, loan_id):
     ).fetchone()  # one row or None
     if loan is None:  # not found
         fail(user_id, "That isn't one of your active loans.")  # stop
+    if staff.has_no_due_date(loan["due_at"]):  # Staff mode: nothing to extend
+        fail(user_id, "Faculty loans have no due date, so they don't need renewing.")
     if loan["due_at"] <= stamp(now()):  # BR-11: only while the loan is still active
         fail(user_id, "Can't renew: this loan has already expired.")  # stop
     others_holding = conn.execute(  # BR-12: anyone else waiting, or with an offer (READY) on this book
@@ -287,6 +341,8 @@ def renew(user_id, loan_id):
     conn.execute(  # save the new date and count the renewal
         "UPDATE loan SET due_at = %s, renewal_count = renewal_count + 1 WHERE loan_id = %s", (stamp(new_due), loan_id)
     )
+    notify(user_id, "LOAN_RENEWED", f"'{book['title']}' was renewed for {book['loan_period_days']} more days.",
+           loan_id=loan_id)  # US-14
     conn.commit()  # save the changes
 
 
@@ -315,12 +371,16 @@ def place_hold(user_id, book_id):
         "SELECT COUNT(*) AS n FROM hold WHERE user_id = %s AND status IN ('WAITING', 'READY')", (user_id,)
     ).fetchone()["n"]  # read the number
     if open_holds >= user["max_holds"]:  # at their limit?
-        fail(user_id, f"Hold limit reached: you can have {user['max_holds']} holds at once.")  # stop
-    conn.execute(  # add them to the back of the line
-        "INSERT INTO hold (user_id, literature_id, placed_at, queue_position) VALUES (%s, %s, %s, %s)",
+        fail(user_id, f"Hold limit reached: you can have {user['max_holds']} holds at once.", kind="HOLD_LIMIT")  # stop
+    hold_id = conn.execute(  # add them to the back of the line
+        "INSERT INTO hold (user_id, literature_id, placed_at, queue_position) VALUES (%s, %s, %s, %s) RETURNING hold_id",
         (user_id, book_id, stamp(now()), people_waiting(book_id) + 1),  # their position = people ahead + 1
-    )
+    ).fetchone()["hold_id"]
+    renumber_queue(book_id)  # Staff mode: staff_holds.get_queue() puts a faculty hold ahead of the students
+    position = conn.execute("SELECT queue_position FROM hold WHERE hold_id = %s", (hold_id,)).fetchone()["queue_position"]
+    notify(user_id, "HOLD_PLACED", f"Hold placed on '{book['title']}'. You're #{position} in line.", hold_id=hold_id)  # US-14
     conn.commit()  # save the changes
+    return hold_id  # staff_holds.place_hold() uses it
 
 
 def my_holds(user_id):
@@ -354,6 +414,8 @@ def cancel_hold(user_id, hold_id):
     if hold is None:  # not found
         fail(user_id, "That isn't one of your open holds.")  # stop
     conn.execute("UPDATE hold SET status = 'CANCELLED', queue_position = NULL WHERE hold_id = %s", (hold_id,))  # mark it cancelled
+    notify(user_id, "HOLD_CANCELLED", f"Your hold on '{get_book(hold['literature_id'])['title']}' was cancelled.",
+           hold_id=hold_id)  # US-14
     renumber_queue(hold["literature_id"])  # people behind them move up
     give_free_slots_to_holds(hold["literature_id"])  # if it was READY, its slot goes to the next person
     conn.commit()  # save the changes
@@ -383,6 +445,8 @@ def decline_hold(user_id, hold_id):
     if hold is None:  # not found
         fail(user_id, "That hold isn't ready.")  # stop
     conn.execute("UPDATE hold SET status = 'DECLINED' WHERE hold_id = %s", (hold_id,))  # mark it declined
+    notify(user_id, "HOLD_DECLINED", f"You declined '{get_book(hold['literature_id'])['title']}'. It went to the next person in line.",
+           hold_id=hold_id)  # US-14
     give_free_slots_to_holds(hold["literature_id"])  # pass the slot on
     conn.commit()  # save the changes
 
@@ -401,15 +465,61 @@ def check_due_items():
     for loan in expired_loans:  # return each one automatically
         return_book(loan["user_id"], loan["loan_id"], return_type="AUTO")  # same function as an early return
 
-    expired_holds = conn.execute(  # READY holds whose 72 hours are up
-        "SELECT * FROM hold WHERE status = 'READY' AND decision_deadline <= %s", (right_now,)
-    ).fetchall()  # get them all
-    for hold in expired_holds:  # expire each one
-        conn.execute("UPDATE hold SET status = 'EXPIRED' WHERE hold_id = %s", (hold["hold_id"],))  # mark it expired
-        give_free_slots_to_holds(hold["literature_id"])  # the next person in line gets it
+    # READY holds whose 72 hours are up: staff_hold_offers.process_holds() expires them and offers
+    # the slot to the next person (staff first). It returns the expired holds for the notifications.
+    from staff_hold_offers import process_holds
+    for hold in process_holds(now()):
+        notify(hold["user_id"], "HOLD_EXPIRED",
+               f"Time ran out to accept '{get_book(hold['literature_id'])['title']}', so it went to the next person in line.",
+               hold_id=hold["hold_id"])  # US-14
 
+    send_reminders()  # US-14: decision window approaching, loan due soon
 
     conn.commit()  # save everything
+
+
+# ---------------------------------------------------------------------------------------------
+# US-14 / FR-23: reminders, sent once each, the next time check_due_items() runs
+# ---------------------------------------------------------------------------------------------
+LOAN_REMINDER = timedelta(days=2)  # remind about a loan 2 days before it's due
+
+
+def already_sent(kind, column, row_id, since):
+    """True if this reminder was already sent for this loan/hold since `since`."""
+    return conn.execute(
+        f"SELECT 1 FROM notification WHERE type = %s AND {column} = %s AND created_at >= %s LIMIT 1",
+        (kind, row_id, since),
+    ).fetchone() is not None
+
+
+def send_reminders():
+    right_now = now()
+
+    # Decision window approaching: the last third of the window (24 of 72 hours, or 1 of 3 demo minutes)
+    ready = conn.execute("SELECT * FROM hold WHERE status = 'READY' AND decision_deadline > %s", (stamp(right_now),)).fetchall()
+    for hold in ready:
+        deadline = datetime.strptime(hold["decision_deadline"], "%Y-%m-%d %H:%M")
+        offered = datetime.strptime(hold["ready_at"], "%Y-%m-%d %H:%M") if hold["ready_at"] else deadline - decision_window()
+        warn_from = deadline - (deadline - offered) / 3
+        if right_now >= warn_from and not already_sent("HOLD_WINDOW_CLOSING", "hold_id", hold["hold_id"], hold["ready_at"] or ""):
+            left = window_words(max(deadline - right_now, timedelta(minutes=1)))
+            notify(hold["user_id"], "HOLD_WINDOW_CLOSING",
+                   f"Less than {left} left to accept '{get_book(hold['literature_id'])['title']}' before it goes to the next person.",
+                   hold_id=hold["hold_id"])
+
+    # Loan due soon (the original US-14 backlog item: due items). Faculty loans have no due date.
+    loans = conn.execute(
+        "SELECT * FROM loan WHERE status = 'ACTIVE' AND due_at > %s AND due_at < %s",
+        (stamp(right_now), staff.NO_DUE_DATE),
+    ).fetchall()
+    for loan in loans:
+        due = datetime.strptime(loan["due_at"], "%Y-%m-%d %H:%M")
+        length = due - datetime.strptime(loan["borrowed_at"], "%Y-%m-%d %H:%M")
+        warn_from = due - min(LOAN_REMINDER, length / 3)  # short demo loans get a reminder near the end too
+        if right_now >= warn_from and not already_sent("LOAN_DUE_SOON", "loan_id", loan["loan_id"], stamp(warn_from)):
+            notify(loan["user_id"], "LOAN_DUE_SOON",
+                   f"'{get_book(loan['literature_id'])['title']}' is due soon and will be returned automatically.",
+                   loan_id=loan["loan_id"])
 
 
 # ---------------------------------------------------------------------------------------------

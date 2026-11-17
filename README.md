@@ -14,6 +14,10 @@ The website (`public`) runs on Netlify, the Python backend (`backend`) runs on R
 - `backend/auth.py` and `backend/library.py` hold the login and lending rules, written as PostgreSQL queries with `%s` placeholders. `backend/database.py` opens the Supabase connection for each request.
 - `supabase/schema.sql` creates the PostgreSQL tables and `supabase/seed.sql` adds the sample data.
 - The browser JavaScript only shows pages and calls the API. All lending and login rules are in the backend.
+- Staff mode (Sprint 4) runs from the team's files: `backend/staff.py`, `staff_borrow.py`, `staff_holds.py`, `staff_hold_offers.py` and `staff_demo.py`. Faculty get no due date, up to 60 active loans and priority in hold queues. Students keep the normal rules. `library.py` hands freed slots, queue order and expired offers to these files, and `api.py` sends borrowing, holds, accept and decline through them.
+- Demo roles follow `staff_demo.py`: even demo IDs are faculty and odd ones are students (for example 501000002 is faculty and 700000001 is a student). The API applies this once when it starts, so an existing database is updated too.
+- `backend/notifications.py` reads notifications back for the Notifications page (US-14). `library.py` creates them when something happens: hold ready, decision window closing, errors, successful borrowing, returned loans, loan limit, hold limit, plus hold placed/cancelled/declined/expired, renewals and loan due soon.
+- In the browser, new notifications pop up on the page where they happened, fade after 6 seconds (hovering keeps them open) and stay saved on `notifications.html`. The nav bar shows an unread badge and a Student or Faculty chip.
 - `backend/test_udbs.py` tests the backend rules. See `TESTING_INSTRUCTIONS.md` for how to run it and for the demo settings.
 
 ## Local API

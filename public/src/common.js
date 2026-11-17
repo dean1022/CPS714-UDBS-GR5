@@ -34,9 +34,12 @@ async function libraryRequest(action, options = {}) {
     location.replace("index.html?expired=1");
     throw new Error("Please sign in again.");
   }
-  if (!response.ok)
+  if (!response.ok) {
+    afterAction(parts[0], options); // refused actions leave an error notification too (US-14)
     throw new Error(data.message || data.detail || "Request failed");
+  }
   if (parts[0] === "login") sessionStorage.setItem("udbs_token", data.token);
+  afterAction(parts[0], options);
   return data;
 }
 function showPageError(err) {
@@ -50,6 +53,8 @@ async function checkLogin() {
   const d = await libraryRequest("session");
   const b = document.querySelector("#logout-button");
   if (b) b.hidden = false;
+  showRole(d.user);
+  startNotifications(d.user);
   return d.user;
 }
 async function logout() {
@@ -59,6 +64,7 @@ async function logout() {
     console.warn(e.message);
   }
   sessionStorage.removeItem("udbs_token");
+  sessionStorage.removeItem("udbs_user");
   location.replace("index.html?logout=1");
 }
 function safeText(s) {
@@ -104,4 +110,135 @@ function timeLeftUntil(value) {
   const minutes = Math.floor((left % 3600000) / 60000);
   const word = (n, unit) => `${n} ${unit}${n === 1 ? "" : "s"}`;
   return `${word(days, "day")} ${word(hours, "hour")} ${word(minutes, "minute")}`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Role distinction (Sprint 4): a Student or Faculty chip in the navigation bar
+// ---------------------------------------------------------------------------------------------
+function showRole(user) {
+  if (!user) return;
+  sessionStorage.setItem("udbs_user", JSON.stringify(user));
+  const links = document.querySelector(".nav-links");
+  if (!links || links.querySelector(".role-chip")) return;
+  const chip = document.createElement("span");
+  chip.className = "role-chip" + (user.is_staff ? " faculty" : "");
+  chip.textContent = user.role_label || (user.is_staff ? "Faculty" : "Student");
+  chip.title = user.is_staff
+    ? "Faculty privileges: " + (user.perks || []).join(", ")
+    : "Student account";
+  const logoutBtn = links.querySelector("#logout-button");
+  links.insertBefore(chip, logoutBtn);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Notifications (US-14 / FR-23)
+// New notifications pop up on the page you're on, fade away after a few seconds,
+// and stay saved on the Notifications page.
+// ---------------------------------------------------------------------------------------------
+const TOAST_SECONDS = 6;
+const NOTE_ACTIONS = ["borrow", "return", "renew", "hold", "holds"];
+let noteUser = null;
+let noteTimer = null;
+let noteBusy = false;
+let noteAgain = false; // an action happened while a check was running, so check once more right after
+
+function lastSeenKey() {
+  return "udbs_last_note_" + (noteUser ? noteUser.user_id : "x");
+}
+
+// After borrow, return, renew or a hold action, check right away so the pop-up shows on this page
+function afterAction(action, options) {
+  if ((options.method || "GET") !== "POST") return;
+  if (NOTE_ACTIONS.includes(action.split("/")[0])) setTimeout(checkNotifications, 150);
+}
+
+function startNotifications(user) {
+  if (noteTimer || !user) return;
+  noteUser = user;
+  checkNotifications();
+  // reminders (hold ready, window closing, loan due soon) can happen while you're on any page
+  noteTimer = setInterval(() => { if (!document.hidden) checkNotifications(); }, 20000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkNotifications(); });
+}
+
+async function checkNotifications() {
+  if (!sessionStorage.getItem("udbs_token")) return;
+  if (noteBusy) { noteAgain = true; return; }
+  noteBusy = true;
+  try {
+    const data = await libraryRequest("notifications/summary");
+    setBadge(data.unread);
+    let seen = Number(localStorage.getItem(lastSeenKey()));
+    if (!localStorage.getItem(lastSeenKey())) seen = data.latest_id; // first visit: don't replay old ones
+    const fresh = data.newest.filter((n) => n.notification_id > seen).reverse();
+    localStorage.setItem(lastSeenKey(), String(Math.max(seen, data.latest_id)));
+    if (fresh.length) {
+      document.dispatchEvent(new CustomEvent("udbs:notifications", { detail: fresh }));
+      if (!document.body.classList.contains("notifications-page")) fresh.slice(-3).forEach(showToast);
+    }
+  } catch (e) {
+    console.warn("Notifications unavailable:", e.message);
+  } finally {
+    noteBusy = false;
+    if (noteAgain) { noteAgain = false; checkNotifications(); }
+  }
+}
+
+function setBadge(count) {
+  document.querySelectorAll(".nav-badge").forEach((badge) => {
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.hidden = !count;
+    badge.setAttribute("aria-label", count + " unread notifications");
+  });
+}
+
+function toastArea() {
+  let area = document.querySelector("#toast-area");
+  if (!area) {
+    area = document.createElement("div");
+    area.id = "toast-area";
+    area.setAttribute("aria-live", "polite");
+    area.setAttribute("role", "status");
+    document.body.appendChild(area);
+  }
+  return area;
+}
+
+function noteKindClass(type) {
+  if (["ERROR", "LOAN_LIMIT", "HOLD_LIMIT", "HOLD_EXPIRED"].includes(type)) return "bad";
+  if (["HOLD_READY", "HOLD_WINDOW_CLOSING", "LOAN_DUE_SOON"].includes(type)) return "action";
+  return "good";
+}
+
+function showToast(note) {
+  const toast = document.createElement("div");
+  toast.className = "udbs-toast " + noteKindClass(note.type);
+  toast.innerHTML = `<div class="toast-text">
+      <strong>${safeText(note.title)}</strong>
+      <span>${safeText(note.message)}</span>
+      <a href="notifications.html">See all notifications</a>
+    </div>
+    <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+    <span class="toast-timer" style="animation-duration:${TOAST_SECONDS}s"></span>`;
+  let left = TOAST_SECONDS * 1000;
+  let started = Date.now();
+  let timer = setTimeout(close, left);
+  function close() {
+    clearTimeout(timer);
+    toast.classList.add("leaving");
+    setTimeout(() => toast.remove(), 300);
+  }
+  // hovering keeps it on screen so it can be read
+  toast.addEventListener("mouseenter", () => {
+    clearTimeout(timer);
+    left -= Date.now() - started;
+    toast.classList.add("paused");
+  });
+  toast.addEventListener("mouseleave", () => {
+    started = Date.now();
+    timer = setTimeout(close, Math.max(1200, left));
+    toast.classList.remove("paused");
+  });
+  toast.querySelector(".toast-close").onclick = close;
+  toastArea().appendChild(toast);
 }

@@ -99,3 +99,4 @@ CREATE TABLE IF NOT EXISTS users (university_id TEXT PRIMARY KEY, email TEXT NOT
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, university_id TEXT NOT NULL REFERENCES users(university_id), created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS loan_active_idx ON loan (user_id, literature_id, status);
 CREATE INDEX IF NOT EXISTS hold_queue_idx ON hold (literature_id, status, queue_position);
+CREATE INDEX IF NOT EXISTS notification_user_idx ON notification (user_id, is_read, created_at);  -- Notifications page (US-14)

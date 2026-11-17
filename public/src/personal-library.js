@@ -1,4 +1,5 @@
 let loans=[];
+let me=null; // signed-in user (Sprint 4: faculty loans have no due date)
 let readingPdf=null;
 let readerGeneration=0;
 let readingLoanId=null;
@@ -38,11 +39,16 @@ function torontoDueDate(value) {
   hour:'numeric', minute:'2-digit', hour12:true, timeZoneName:'short'
  }).format(new Date(timestamp));
 }
-function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans');document.querySelector('#empty-loans').hidden=!!loans.length;
+function draw(){list.innerHTML='';document.querySelector('#loan-count').textContent=loans.length+' active '+(loans.length===1?'loan':'loans')+(me&&me.loan_limit?' of '+me.loan_limit+' allowed':'')+(me&&me.is_staff?' · Faculty loans have no due date':'');document.querySelector('#empty-loans').hidden=!!loans.length;
  for(const loan of loans){const col=document.createElement('div');col.className='col-md-6 col-lg-4';// Render writes loan timestamps in UTC without an offset. Parse explicitly as UTC.
  const due=dueMillis(loan.due_at);const remain=Number.isFinite(due) ? Math.max(0,due-Date.now()) : 0;const days=Math.floor(remain/86400000),hours=Math.floor((remain%86400000)/3600000),minutes=Math.floor((remain%3600000)/60000);
- col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3><p>Due: ${safeText(torontoDueDate(loan.due_at))}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p><div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button><button class="btn btn-outline-dark renew-btn">Renew</button></div><p class="renewals">Renewed ${Number(loan.renewal_count||0)} of 2 times</p></article>`;
- col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);col.querySelector('.renew-btn').onclick=()=>renewLoan(loan);list.appendChild(col);}}
+ // Staff mode: a faculty loan has no due date, so there's no countdown and nothing to renew
+ const noDue=!!loan.no_due_date;
+ const dueHtml=noDue?`<p>Due: No due date <span class="role-chip faculty small">Faculty</span></p><p class="time-left keep">Keep as long as you need</p>`:`<p>Due: ${safeText(torontoDueDate(loan.due_at))}</p><p class="time-left">${days} days ${hours} hours ${minutes} minutes remaining</p>`;
+ const renewHtml=noDue?'':'<button class="btn btn-outline-dark renew-btn">Renew</button>';
+ const renewNote=noDue?'':`<p class="renewals">Renewed ${Number(loan.renewal_count||0)} of 2 times</p>`;
+ col.innerHTML=`<article class="book-card"><h3>${safeText(loan.title)}</h3>${dueHtml}<div class="card-bottom"><a class="btn btn-outline-dark details-btn" href="literature.html?id=${encodeURIComponent(loan.literature_id)}">View details</a><button class="btn btn-dark read-btn">Read PDF</button><button class="btn btn-outline-dark return-btn">Return early</button>${renewHtml}</div>${renewNote}</article>`;
+ col.querySelector('.read-btn').onclick=()=>openBook(loan);col.querySelector('.return-btn').onclick=()=>returnLoan(loan);if(!noDue)col.querySelector('.renew-btn').onclick=()=>renewLoan(loan);list.appendChild(col);}}
 async function loadLoans(){try{const d=await libraryRequest('loans');loans=d.loans;
  if(readingLoanId!==null&&!loans.some(loan=>String(loan.loan_id)===String(readingLoanId) && dueMillis(loan.due_at)>Date.now()))closeReader();
  draw();}catch(e){showPageError(e);}}
@@ -108,4 +114,4 @@ async function returnLoan(loan){if(!confirm('Return '+loan.title+' early?'))retu
 async function renewLoan(loan){if(!confirm('Renew '+loan.title+' for 14 more days?'))return;try{await libraryRequest('renew/'+loan.loan_id,{method:'POST'});showPageMessage(loan.title+' was renewed.');await loadLoans();}catch(e){showPageError(e);}}
 document.querySelector('#close-reading').onclick=closeReader;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){enforceReaderExpiry();loadLoans();}});
-(async()=>{try{await checkLogin();document.querySelector('#private-content').hidden=false;await loadLoans();setInterval(()=>{if(!document.hidden)loadLoans();},10000);setInterval(()=>{if(!document.hidden)draw();},60000);}catch(e){showPageError(e);}})();
+(async()=>{try{me=await checkLogin();document.querySelector('#private-content').hidden=false;await loadLoans();setInterval(()=>{if(!document.hidden)loadLoans();},10000);setInterval(()=>{if(!document.hidden)draw();},60000);}catch(e){showPageError(e);}})();

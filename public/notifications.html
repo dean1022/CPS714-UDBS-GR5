@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notifications | UDBS</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="src/styles.css">
+  <script src="src/common.js" defer></script>
+  <script src="src/notifications.js" defer></script>
+</head>
+<body class="notifications-page">
+  <nav class="navbar">
+    <div class="container">
+      <a class="navbar-brand" href="catalogue.html"><span class="logo">U</span> UDBS</a>
+      <div class="nav-links">
+        <a href="personal-library.html">Personal Library</a>
+        <a href="holds.html">Holds</a>
+        <a href="catalogue.html">Catalogue</a>
+        <a href="profile.html">Personal Info</a>
+        <a href="notifications.html" class="nav-notify active" aria-current="page">Notifications <span class="nav-badge" hidden></span></a>
+        <a href="about.html">About Us</a>
+        <button class="btn btn-outline-dark btn-sm" id="logout-button" hidden>Log out</button>
+      </div>
+    </div>
+  </nav>
+  <p class="container message" id="page-message" role="status" aria-live="polite"></p>
+  <main class="container content" id="private-content" hidden>
+    <section class="catalogue-heading">
+      <div>
+        <p class="eyebrow">WHAT'S HAPPENED</p>
+        <h1>Notifications</h1>
+        <p>Every update about your loans and holds, newest first.</p>
+      </div>
+      <button class="btn btn-outline-dark" id="mark-all-read" type="button" disabled>Mark all as read</button>
+    </section>
+    <div class="note-filters" role="tablist" aria-label="Filter notifications">
+      <button type="button" class="note-filter active" data-filter="all" role="tab" aria-selected="true">All</button>
+      <button type="button" class="note-filter" data-filter="unread" role="tab" aria-selected="false">Unread <span id="unread-count"></span></button>
+      <button type="button" class="note-filter" data-filter="action" role="tab" aria-selected="false">Needs action</button>
+      <button type="button" class="note-filter" data-filter="problems" role="tab" aria-selected="false">Errors &amp; limits</button>
+    </div>
+    <div id="note-list" class="note-list"></div>
+    <p id="empty-notes" class="empty-loans" hidden>Nothing here yet. Borrowing, returning and holds will show up here.</p>
+  </main>
+  <footer>
+    <div class="container">
+      UDBS
+      <span>CPS714 &middot; Group 5 &middot; Dean Voss &middot; Kusal Amarathunge &middot; Megan Vieira &copy; 2026</span>
+    </div>
+  </footer>
+  <noscript><p class="container">Please enable JavaScript to see your notifications.</p></noscript>
+</body>
+</html>

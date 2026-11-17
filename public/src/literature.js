@@ -112,7 +112,7 @@ async function setupBookAction(book) {
 
   // No free slot: show the current queue first, then let them place a hold
   const queueData = await libraryRequest('book/' + encodeURIComponent(book.literature_id) + '/queue');
-  showQueue(queueData.queue);
+  showQueue(queueData.queue, queueData.your_position, queueData.staff_priority);
   button.disabled = false;
   button.textContent = 'Place a hold';
   button.onclick = async () => {
@@ -131,14 +131,19 @@ async function setupBookAction(book) {
 }
 
 // The current line for this book, without other users' names
-function showQueue(queue) {
+function showQueue(queue, yourPosition, staffPriority) {
   const queueBox = document.querySelector('#hold-queue');
   let html = `<p class="hold-queue-title">${queue.length ? queue.length + ' in the hold queue' : 'Nobody is in the hold queue yet'}</p>`;
   if (queue.length) {
     html += '<ol class="hold-queue-list">' + queue.map(spot =>
       `<li>#${safeText(spot.position)} · placed ${safeText(torontoTime(spot.placed_at))}</li>`).join('') + '</ol>';
   }
-  html += `<p class="hold-queue-note">If you place a hold, you'll be #${queue.length + 1} in line.</p>`;
+  // Staff mode: faculty join ahead of students, so the server works out the real place in line
+  const place = yourPosition || queue.length + 1;
+  html += `<p class="hold-queue-note">If you place a hold, you'll be #${place} in line.</p>`;
+  if (staffPriority && place <= queue.length) {
+    html += '<p class="hold-queue-note faculty-note">Faculty holds go ahead of student holds, so you join behind other faculty only.</p>';
+  }
   queueBox.innerHTML = html;
   queueBox.hidden = false;
 }

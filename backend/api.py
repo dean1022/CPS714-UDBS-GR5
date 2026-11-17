@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import database, library, auth
+import notifications  # Sprint 4: the Notifications page (US-14)
+# Sprint 4 staff mode: the team's staff files decide the faculty rules
+import staff, staff_borrow, staff_holds, staff_hold_offers, staff_demo, seed_users
 
 app=FastAPI(title="UDBS Python API", docs_url="/api/docs")
 origin=os.environ.get("FRONTEND_ORIGIN", "http://localhost:8888").rstrip("/")
@@ -15,9 +18,21 @@ lock=threading.RLock() # serialize transactions across concurrent demo requests
 def connection():
     with lock:
         raw=database.open_db(); token=database._current.set(raw)
+        library.pending_error_notes.clear()
         try:
             yield
             raw.commit()
+        except library.LibraryError:
+            raw.rollback()
+            # US-14: the rollback also removed the error notification, so save it again on its own
+            try:
+                for user_id, kind, message, created in library.pending_error_notes:
+                    database.conn.execute("INSERT INTO notification (user_id, type, message, created_at) VALUES (%s, %s, %s, %s)",
+                                          (user_id, kind, message, created))
+                raw.commit()
+            except Exception:
+                raw.rollback()
+            raise
         except:
             raw.rollback()
             raise
@@ -38,16 +53,37 @@ class Credentials(BaseModel):
 @app.post('/api/login')
 def login(body:Credentials):
     with connection():
+        apply_demo_roles_once()
         token=auth.login(body.identifier,body.password)
-        user=auth.get_current_user(token)
+        user=with_role(auth.get_current_user(token))
         return {"token":token,"user":user}
+
+roles_applied=False
+def apply_demo_roles_once():
+    # staff_demo.py: even demo IDs are faculty, odd ones are students. Runs once each time the server starts,
+    # so a database seeded before this rule is fixed too. Accounts that aren't demo accounts are left alone.
+    global roles_applied
+    if not roles_applied:
+        staff_demo.apply_demo_roles()
+        roles_applied=True
+
+def with_role(user):
+    # Role distinction: student vs faculty, and the limits that come with it (staff.py / staff_borrow.py)
+    if not user: return user
+    faculty=staff.is_staff(user['university_id'])
+    user['is_staff']=faculty
+    user['role_label']='Faculty' if faculty else 'Student'
+    user['loan_limit']=staff_borrow.loan_limit(user['university_id'])
+    user['hold_limit']=user['max_holds']
+    user['perks']=(["No due date on loans",f"Up to {staff.STAFF_MAX_LOANS} active loans","Priority in hold queues"] if faculty else [])
+    return user
 
 def current_user(request:Request):
     header=request.headers.get('authorization','')
     if not header.startswith('Bearer '): raise HTTPException(401,'Please sign in.')
     user=auth.get_current_user(header[7:])
     if not user: raise HTTPException(401,'Session expired. Please sign in.')
-    return user
+    return with_role(user)
 
 @app.get('/api/session')
 def session(request:Request):
@@ -88,8 +124,8 @@ def book(request:Request,book_id:int):
 def borrow(request:Request,book_id:int):
     with connection():
         user=current_user(request)
-        library.borrow(user['user_id'],book_id)
-        return {'message':'Borrowed successfully'}
+        result=staff_borrow.borrow_literature(user['university_id'],book_id)  # students fall through to library.borrow
+        return {'message':'Borrowed successfully','due_at':result['due_at']}
 
 @app.get('/api/loans')
 def loans(request:Request):
@@ -115,20 +151,22 @@ def renew(request:Request,loan_id:int):
 def place_hold(request:Request,book_id:int):
     with connection():
         user=current_user(request)
-        library.place_hold(user['user_id'],book_id)
-        return {'message':'Hold placed'}
+        result=staff_holds.place_hold(user['university_id'],book_id)  # staff go ahead of students
+        return {'message':result['message'],'queue_position':result['queue_position']}
 
 @app.get('/api/holds')
 def holds(request:Request):
     with connection():
         user=current_user(request);library.check_due_items()
-        return {'holds':library.my_holds(user['user_id'])}
+        return {'holds':staff_holds.get_my_holds(user['university_id'])}
 
 @app.get('/api/book/{book_id}/queue')
 def queue(request:Request,book_id:int):
     with connection():
-        current_user(request);library.check_due_items()
-        return {'queue':library.hold_queue(book_id)}
+        user=current_user(request);library.check_due_items()
+        # Staff mode: faculty join ahead of students, so "your place" isn't always the end of the line
+        return {'queue':library.hold_queue(book_id),'your_position':staff_holds.next_position(user['university_id'],book_id),
+                'staff_priority':user['is_staff']}
 
 @app.post('/api/holds/{hold_id}/cancel')
 def cancel_hold(request:Request,hold_id:int):
@@ -140,15 +178,15 @@ def cancel_hold(request:Request,hold_id:int):
 @app.post('/api/holds/{hold_id}/accept')
 def accept_hold(request:Request,hold_id:int):
     with connection():
-        user=current_user(request)
-        library.accept_hold(user['user_id'],hold_id)
-        return {'message':'Hold accepted. The book is now in your Personal Library.'}
+        user=current_user(request);library.check_due_items()  # expire anything whose time is up first
+        result=staff_hold_offers.accept_hold(user['university_id'],hold_id)  # staff get no due date
+        return {'message':'Hold accepted. The book is now in your Personal Library.','due_at':result['due_at']}
 
 @app.post('/api/holds/{hold_id}/decline')
 def decline_hold(request:Request,hold_id:int):
     with connection():
         user=current_user(request);library.check_due_items()
-        library.decline_hold(user['user_id'],hold_id)
+        staff_hold_offers.decline_hold(user['university_id'],hold_id)  # the slot goes to the next person, staff first
         return {'message':'Hold declined'}
 
 # Personal information (US-15)
@@ -186,3 +224,31 @@ def expire(request:Request):
     if not expected or not secrets.compare_digest(request.headers.get('authorization',''),f'Bearer {expected}'):
         raise HTTPException(403,'Forbidden')
     with connection():library.check_due_items();return {'ok':True,'checked_at':datetime.utcnow().isoformat()}
+
+# Notifications (US-14 / FR-23)
+@app.get('/api/notifications')
+def notification_list(request:Request,unread:int=0):
+    with connection():
+        user=current_user(request);library.check_due_items()  # sends any reminders that are due first
+        return {'notifications':notifications.my_notifications(user['user_id'],bool(unread)),
+                'unread':notifications.unread_count(user['user_id'])}
+
+@app.get('/api/notifications/summary')
+def notification_summary(request:Request):
+    # small request the navigation bar makes every so often for the badge and pop-up
+    with connection():
+        user=current_user(request);library.check_due_items()
+        newest=notifications.my_notifications(user['user_id'])[:5]
+        return {'unread':notifications.unread_count(user['user_id']),'latest_id':notifications.latest_id(user['user_id']),'newest':newest}
+
+@app.post('/api/notifications/read')
+def notification_read_all(request:Request):
+    with connection():
+        user=current_user(request);notifications.mark_read(user['user_id'])
+        return {'message':'All notifications marked as read.','unread':0}
+
+@app.post('/api/notifications/{notification_id}/read')
+def notification_read(request:Request,notification_id:int):
+    with connection():
+        user=current_user(request);notifications.mark_read(user['user_id'],notification_id)
+        return {'unread':notifications.unread_count(user['user_id'])}
